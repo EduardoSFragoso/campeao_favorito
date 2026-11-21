@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { Backend, SummonerProfile } from '../../core/backend.service';
@@ -23,6 +23,7 @@ const PLATFORMS: { id: string; label: string }[] = [
   selector: 'app-summoner',
   imports: [FormsModule, DecimalPipe],
   templateUrl: './summoner.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './summoner.scss',
 })
 export class SummonerPage {

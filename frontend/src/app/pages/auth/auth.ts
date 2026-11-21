@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth } from '../../core/auth.service';
@@ -9,6 +9,7 @@ import { messageOf } from '../../core/api-error';
   selector: 'app-auth',
   imports: [FormsModule],
   templateUrl: './auth.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.scss',
 })
 export class AuthPage {

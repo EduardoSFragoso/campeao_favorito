@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs/operators';
@@ -13,6 +13,7 @@ import { messageOf } from '../../core/api-error';
   selector: 'app-champion-detail',
   imports: [RouterLink],
   templateUrl: './champion-detail.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './champion-detail.scss',
 })
 export class ChampionDetailPage {

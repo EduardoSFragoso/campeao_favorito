@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Auth } from '../../core/auth.service';
@@ -11,6 +11,7 @@ import { messageOf } from '../../core/api-error';
   selector: 'app-favorites',
   imports: [RouterLink],
   templateUrl: './favorites.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './favorites.scss',
 })
 export class FavoritesPage {

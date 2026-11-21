@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DataDragon, DDragonChampion } from '../../core/data-dragon.service';
@@ -11,6 +11,7 @@ import { catchError, map } from 'rxjs/operators';
   selector: 'app-champions',
   imports: [RouterLink],
   templateUrl: './champions.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './champions.scss',
 })
 export class ChampionsPage {

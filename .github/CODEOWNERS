@@ -1,13 +1,12 @@
-# Donos de código — AVISAR para substituir pelo usuário GitHub real
-# (ex.: * @eduardo-usuario-github)
+# Donos de código — revisão obrigatória antes do merge na main
 
 # Backend inteiro
-/backend/ @eduardo
+/backend/ @EduardoSFragoso
 
 # Frontend inteiro
-/frontend/ @eduardo
+/frontend/ @EduardoSFragoso
 
 # Segurança e CI/CD — revisão sempre
-/.github/ @eduardo
-/backend/src/main/java/br/com/favorito/api/config/ @eduardo
-/backend/src/main/resources/ @eduardo
+/.github/ @EduardoSFragoso
+/backend/src/main/java/br/com/favorito/api/config/ @EduardoSFragoso
+/backend/src/main/resources/ @EduardoSFragoso

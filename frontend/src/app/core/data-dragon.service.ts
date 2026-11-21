@@ -120,8 +120,19 @@ export interface DDragonChampion {
 export interface ChampDetail extends DDragonChampion {
   lore: string;
   spells: { id: string; name: string; description: string; image: { full: string } }[];
-  skins: { id: number; num: number; name: string; chromas: boolean }[];
+  /**
+   * Lista de skins do campeão.
+   * - skin real → `chromas` indica se ela tem cromas disponíveis;
+   * - croma → vem com `parentSkin` apontando para o `num` da skin base e
+   *   NÃO possui splash próprio no CDN (compartilha o da skin base).
+   */
+  skins: { id: number; num: number; name: string; chromas: boolean; parentSkin?: number }[];
   info: { attack: number; defense: number; magic: number; difficulty: number };
+}
+
+/** Skin real do Data Dragon (cromas têm `parentSkin` e não têm arte própria). */
+export function isRealSkin(skin: ChampDetail['skins'][number]): boolean {
+  return skin.parentSkin === undefined;
 }
 
 interface ChampionListResponse {

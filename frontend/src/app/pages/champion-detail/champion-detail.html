@@ -59,9 +59,9 @@
       </section>
 
       <section>
-        <h2>Skins 🎭 ({{ c.skins.length }})</h2>
+        <h2>Skins 🎭 ({{ realSkins().length }})</h2>
         <div class="skins">
-          @for (skin of c.skins; track skin.num) {
+          @for (skin of realSkins(); track skin.num) {
             <button
               class="skin"
               [class.active]="activeSkin() === skin.num"

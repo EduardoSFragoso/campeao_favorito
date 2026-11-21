@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { DataDragon, ChampDetail } from '../../core/data-dragon.service';
+import { DataDragon, ChampDetail, isRealSkin } from '../../core/data-dragon.service';
 import { Backend } from '../../core/backend.service';
 import { Auth } from '../../core/auth.service';
 import { messageOf } from '../../core/api-error';
@@ -32,6 +32,9 @@ export class ChampionDetailPage {
   );
 
   protected readonly activeSkin = signal(0);
+
+  /** Skins renderizáveis (cromas não têm splash próprio e ficam de fora). */
+  protected readonly realSkins = computed(() => this.data()?.skins.filter(isRealSkin) ?? []);
 
   protected readonly splashUrl = computed(() => {
     const c = this.data();

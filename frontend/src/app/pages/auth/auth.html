@@ -1,0 +1,39 @@
+<div class="auth-card">
+  <h1>{{ mode() === 'login' ? 'Entrar' : 'Criar conta' }}</h1>
+  <p class="hint">
+    Login próprio com JWT — seus favoritos ficam no Postgres (Neon) vinculados à sua conta.
+  </p>
+
+  <form (submit)="$event.preventDefault(); submit()">
+    @if (mode() === 'register') {
+      <label>
+        Como te chamamos?
+        <input type="text" name="displayName" [(ngModel)]="displayName" required minlength="2" />
+      </label>
+    }
+    <label>
+      E-mail
+      <input type="email" name="email" [(ngModel)]="email" required />
+    </label>
+    <label>
+      Senha (mínimo 8 caracteres)
+      <input type="password" name="password" [(ngModel)]="password" required minlength="8" />
+    </label>
+
+    @if (error(); as msg) {
+      <p class="error">{{ msg }}</p>
+    }
+
+    <button class="btn primary" type="submit" [disabled]="busy()">
+      {{ busy() ? 'Enviando…' : mode() === 'login' ? 'Entrar' : 'Criar conta e entrar' }}
+    </button>
+  </form>
+
+  <button class="link" (click)="switchMode()">
+    @if (mode() === 'login') {
+      Não tem conta? Criar agora
+    } @else {
+      Já tem conta? Entrar
+    }
+  </button>
+</div>

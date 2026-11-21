@@ -1,0 +1,13 @@
+# Donos de código — AVISAR para substituir pelo usuário GitHub real
+# (ex.: * @eduardo-usuario-github)
+
+# Backend inteiro
+/backend/ @eduardo
+
+# Frontend inteiro
+/frontend/ @eduardo
+
+# Segurança e CI/CD — revisão sempre
+/.github/ @eduardo
+/backend/src/main/java/br/com/favorito/api/config/ @eduardo
+/backend/src/main/resources/ @eduardo

@@ -1,0 +1,84 @@
+<h1 class="page-title">Buscar invocador 🎯</h1>
+<p class="hint">
+  Dados ao vivo da Riot API: Account + Summoner + Elo + Maestria. Formato
+  <code>GameName#TAG</code>.
+</p>
+
+<form class="search" (submit)="$event.preventDefault(); search()">
+  <input
+    type="text"
+    [(ngModel)]="gameName"
+    name="gameName"
+    placeholder="GameName (ex.: Hide on bush)"
+    required
+  />
+  <input type="text" [(ngModel)]="tagLine" name="tagLine" placeholder="#TAG (ex.: BR1)" required />
+  <select [(ngModel)]="platform" name="platform">
+    @for (p of platforms; track p.id) {
+      <option [value]="p.id">{{ p.label }}</option>
+    }
+  </select>
+  <button class="btn" type="submit" [disabled]="loading()">
+    {{ loading() ? 'Buscando…' : 'Buscar' }}
+  </button>
+</form>
+
+@if (error(); as msg) {
+  <p class="error">{{ msg }}</p>
+}
+
+@if (profile(); as p) {
+  <section class="profile">
+    <div class="head">
+      <img [src]="dd.profileIcon(p.profileIconId)" [alt]="p.name" class="icon" />
+      <div>
+        <h2>
+          {{ p.gameName }}<small>#{{ p.tagLine }}</small>
+        </h2>
+        <span class="level">Nível {{ p.summonerLevel }}</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="col">
+        <h3>Elo ranqueado</h3>
+        @for (r of p.ranked; track r.queueType) {
+          <div class="rank-row">
+            <div>
+              <strong>{{ queueLabel(r.queueType) }}</strong>
+              <span class="tier">{{ r.tier }} {{ r.rank }} — {{ r.leaguePoints }} LP</span>
+            </div>
+            <div class="wl">
+              {{ r.wins }}W / {{ r.losses }}L
+              <em>{{ r.winratePercent | number: '1.0-1' }}% WR</em>
+            </div>
+          </div>
+        } @empty {
+          <p class="muted">Sem ranqueada nessa conta.</p>
+        }
+      </div>
+
+      <div class="col">
+        <h3>Top 5 maestria</h3>
+        @for (m of p.topMasteries; track m.championId) {
+          <div class="rank-row mastery-row">
+            @if (dd.squareIconByKey(m.championId); as icon) {
+              <img [src]="icon" alt="" class="mk-icon" />
+            }
+            <div>
+              <strong>MK{{ m.championLevel }}</strong>
+              <span class="tier"
+                >{{ m.championPoints | number }} pontos
+                @if (m.chestGranted) {
+                  • 🧰 baú ganho
+                }
+              </span>
+            </div>
+          </div>
+        } @empty {
+          <p class="muted">Sem maestria registrada.</p>
+        }
+      </div>
+    </div>
+  </section>
+}

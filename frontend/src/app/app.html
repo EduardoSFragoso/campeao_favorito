@@ -1,0 +1,39 @@
+<header class="topbar">
+  <a routerLink="/" class="brand">
+    <span class="brand-logo">⚔️</span>
+    <span class="brand-name">Campeões Favoritos<small>League of Legends</small></span>
+  </a>
+
+  <nav>
+    <a routerLink="/" routerLinkActive="active">Campeões</a>
+    @if (auth.isLoggedIn()) {
+      <a routerLink="/favoritos" routerLinkActive="active">Favoritos</a>
+    }
+    <a routerLink="/invocador" routerLinkActive="active">Invocador</a>
+  </nav>
+
+  <div class="session">
+    @if (auth.user(); as user) {
+      <span class="who">👤 {{ user.displayName }}</span>
+      <button class="btn ghost" (click)="logout()">Sair</button>
+    } @else {
+      <a class="btn" routerLink="/login">Entrar para favoritar</a>
+    }
+  </div>
+</header>
+
+<main>
+  <router-outlet />
+</main>
+
+<footer class="foot">
+  <p>
+    campeão_favorito não tem endosso da Riot Games e não reflete as visões ou opiniões da Riot Games
+    ou de quem quer que esteja oficialmente envolvido na produção ou gestão das propriedades da
+    Riot. Dados de jogo via Data Dragon.
+  </p>
+  <p>
+    League of Legends © Riot Games, Inc. League of Legends e Riot Games são marcas registradas ou de
+    serviço da Riot Games, Inc.
+  </p>
+</footer>

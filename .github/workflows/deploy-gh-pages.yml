@@ -1,0 +1,56 @@
+name: Deploy Angular ao GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # URL do backend em produção vem da variável de repositório API_URL
+      # (Settings → Secrets and variables → Actions → Variables)
+      - name: Escreve config.json de produção
+        run: |
+          cat > frontend/public/config.json <<EOF
+          { "apiUrl": "${{ vars.API_URL }}" }
+          EOF
+          cat frontend/public/config.json
+
+      - name: Build (base href do subpath do gh-pages)
+        working-directory: frontend
+        run: |
+          npm ci
+          npx ng build --base-href "/${GITHUB_REPOSITORY##*/}/"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist/frontend/browser
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: champion-favorites-api
+  datasource:
+    # Neon: use a connection string do painel com ?sslmode=require
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/champion_favorito}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 4
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: ${PORT:8080}
+
+app:
+  jwt:
+    # gere um secret forte: openssl rand -base64 64
+    secret: ${JWT_SECRET:troque-este-secret-em-producao-com-uma-chave-de-64-bytes-no-minimo!!}
+    expiration-ms: 604800000 # 7 dias
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+riot:
+  api:
+    key: ${RIOT_API_KEY:}
+    default-platform: br1
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+logging:
+  level:
+    br.com.favorito.api: DEBUG

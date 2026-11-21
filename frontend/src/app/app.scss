@@ -1,0 +1,93 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 0.7rem 1.5rem;
+  background: rgba(10, 20, 40, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #1e2a45;
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: var(--gold);
+
+    .brand-logo {
+      font-size: 1.5rem;
+    }
+
+    .brand-name {
+      display: flex;
+      flex-direction: column;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+
+      small {
+        font-weight: 400;
+        font-size: 0.68rem;
+        color: #7f8db3;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+    }
+  }
+
+  nav {
+    display: flex;
+    gap: 1.2rem;
+    flex: 1;
+
+    a {
+      color: #aeb8d8;
+      text-decoration: none;
+      font-size: 0.95rem;
+      padding: 0.3rem 0.2rem;
+      border-bottom: 2px solid transparent;
+
+      &:hover {
+        color: var(--gold);
+      }
+
+      &.active {
+        color: var(--gold);
+        border-bottom-color: var(--gold);
+      }
+    }
+  }
+
+  .session {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+
+    .who {
+      color: var(--cyan);
+      font-size: 0.9rem;
+    }
+  }
+}
+
+main {
+  flex: 1;
+  width: min(1200px, 100% - 2.5rem);
+  margin: 0 auto;
+}
+
+.foot {
+  margin-top: 3rem;
+  padding: 1.2rem;
+  text-align: center;
+  color: #5a6584;
+  font-size: 0.78rem;
+}

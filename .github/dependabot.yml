@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  # Backend Java (Spring Boot, jjwt...)
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Frontend Angular
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Ações de CI
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

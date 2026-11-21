@@ -1,0 +1,37 @@
+@if (auth.isLoggedIn()) {
+  <h1 class="page-title">Meus favoritos ♥</h1>
+
+  @if (favorites() === null) {
+    <p class="loading">Carregando…</p>
+  } @else if (!favorites()?.length) {
+    <p class="loading">
+      Você ainda não tem favoritos.
+      <a routerLink="/">Explore os campeões</a> e toque no ♡ para começar.
+    </p>
+  } @else {
+    <div class="fav-list">
+      @for (f of favorites(); track f.id) {
+        <div class="fav-row">
+          <img [src]="dd.squareIcon(f.championId)" [alt]="f.championName" />
+          <div class="info">
+            <a [routerLink]="['/champion', f.championId]"
+              ><strong>{{ f.championName }}</strong></a
+            >
+            @if (f.title) {
+              <span class="subtitle">{{ f.title }}</span>
+            }
+          </div>
+          <button class="btn ghost" [disabled]="busy() === f.championId" (click)="remove(f)">
+            {{ busy() === f.championId ? 'Removendo…' : 'Remover ✕' }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+} @else {
+  <div class="gate">
+    <h1>Favoritos</h1>
+    <p>Você precisa entrar para ver seus campeões favoritos.</p>
+    <a class="btn" routerLink="/login">Entrar / Criar conta</a>
+  </div>
+}

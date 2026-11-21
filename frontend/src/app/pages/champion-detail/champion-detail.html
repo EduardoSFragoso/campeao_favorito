@@ -1,0 +1,82 @@
+@if (data(); as c) {
+  <article class="detail">
+    <div class="splash" [style.background-image]="'url(' + splashUrl() + ')'">
+      <div class="splash-info">
+        <h1>{{ c.name }}</h1>
+        <p class="title">{{ c.title }}</p>
+        <div class="tags">
+          @for (t of c.tags; track t) {
+            <span>{{ t }}</span>
+          }
+        </div>
+        <button class="btn fav-btn" [class.on]="isFavorite()" (click)="toggleFavorite()">
+          {{ isFavorite() ? '♥ nos favoritos' : '♡ seu favorito' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="sections">
+      <section>
+        <h2>Lore</h2>
+        <p class="lore">{{ c.lore }}</p>
+      </section>
+
+      <section>
+        <h2>Atributos 💪(Riot)</h2>
+        <div class="stats">
+          <div class="stat">
+            <span>Ataque</span>
+            <div class="bar"><i [style.width.%]="statBar(c.info.attack)"></i></div>
+          </div>
+          <div class="stat">
+            <span>Defesa</span>
+            <div class="bar"><i [style.width.%]="statBar(c.info.defense)"></i></div>
+          </div>
+          <div class="stat">
+            <span>Magia</span>
+            <div class="bar"><i [style.width.%]="statBar(c.info.magic)"></i></div>
+          </div>
+          <div class="stat">
+            <span>Dificuldade</span>
+            <div class="bar"><i [style.width.%]="statBar(c.info.difficulty)"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Habilidades 🧙</h2>
+        <ul class="spells">
+          @for (s of c.spells; track s.id) {
+            <li>
+              <img [src]="dd.spellIcon(s.image.full)" [alt]="s.name" />
+              <div>
+                <strong>{{ s.name }}</strong>
+                <p [innerHTML]="s.description"></p>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section>
+        <h2>Skins 🎭 ({{ c.skins.length }})</h2>
+        <div class="skins">
+          @for (skin of c.skins; track skin.num) {
+            <button
+              class="skin"
+              [class.active]="activeSkin() === skin.num"
+              (click)="activeSkin.set(skin.num)"
+            >
+              <img [src]="dd.splash(c.id, skin.num)" [alt]="skin.name" loading="lazy" />
+              <span>{{ skin.name }}</span>
+            </button>
+          }
+        </div>
+      </section>
+    </div>
+
+    <a routerLink="/" class="back">← Voltar aos campeões</a>
+  </article>
+} @else {
+  <p class="loading">Carregando campeão…</p>
+}

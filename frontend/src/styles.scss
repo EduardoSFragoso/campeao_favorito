@@ -1,0 +1,83 @@
+/* Tema geral — inspirado na paleta do LoL */
+:root {
+  --gold: #c8aa6e;
+  --cyan: #0ac8b9;
+  --bg: #050b16;
+  --panel: #0b1628;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(1400px 800px at 70% -10%, #0d1a33 0%, var(--bg) 60%);
+  color: #e4e9f7;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+}
+
+/* Botões compartilhados */
+.btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  background: linear-gradient(180deg, rgba(200, 170, 110, 0.16), rgba(200, 170, 110, 0.05));
+  color: var(--gold);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    background: rgba(200, 170, 110, 0.25);
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+
+  &.primary {
+    background: linear-gradient(180deg, var(--gold), #a4824c);
+    color: #10192c;
+    font-weight: 700;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+
+  &.ghost {
+    border-color: #22325a;
+    background: transparent;
+    color: #aeb8d8;
+
+    &:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: transparent;
+    }
+  }
+}
+
+a {
+  color: var(--cyan);
+}

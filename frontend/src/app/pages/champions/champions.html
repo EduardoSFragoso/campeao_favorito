@@ -1,0 +1,49 @@
+<section class="hero">
+  <h1>Campeões de League of Legends</h1>
+  <p>
+    Splasharts, lore e maestrias via Data Dragon + Riot API. Clique no coração para favoritar (login
+    necessário).
+  </p>
+</section>
+
+<div class="toolbar">
+  <input
+    type="search"
+    placeholder="Buscar campeão..."
+    [value]="query()"
+    (input)="onSearch($any($event.target).value)"
+  />
+</div>
+
+@if (champions() === null) {
+  <p class="loading">Carregando campeões do Data Dragon…</p>
+} @else if (champions() === 'error') {
+  <p class="loading">Não foi possível carregar a lista de campeões (Data Dragon).</p>
+} @else if (!filtered()?.length) {
+  <p class="loading">Nenhum campeão encontrado para “{{ query() }}”.</p>
+} @else {
+  <div class="grid">
+    @for (c of filtered(); track c.id) {
+      <article class="card">
+        <a [routerLink]="['/champion', c.id]" class="card-link">
+          <img [src]="dd.loading(c.id)" [alt]="c.name" loading="lazy" />
+          <div class="overlay">
+            <h3>{{ c.name }}</h3>
+            <p>{{ c.title }}</p>
+          </div>
+          @if (isFreeToPlay(c)) {
+            <span class="badge free" title="Semana gratuitão hoje!">Grátis na semana</span>
+          }
+        </a>
+        <button
+          class="fav"
+          [class.on]="isFavorite(c)"
+          (click)="toggleFavorite(c)"
+          [title]="auth.isLoggedIn() ? 'Favoritar' : 'Faça login para favoritar'"
+        >
+          {{ isFavorite(c) ? '♥' : '♡' }}
+        </button>
+      </article>
+    }
+  </div>
+}

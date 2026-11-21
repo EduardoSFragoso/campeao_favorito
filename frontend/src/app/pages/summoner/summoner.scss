@@ -1,0 +1,138 @@
+.page-title {
+  color: var(--gold);
+  font-size: 1.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.hint {
+  color: #7f8db3;
+  margin-top: 0;
+
+  code {
+    color: var(--cyan);
+  }
+}
+
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.2rem 0 2rem;
+
+  input,
+  select {
+    padding: 0.6rem 0.9rem;
+    background: #0b1628;
+    border: 1px solid #22325a;
+    border-radius: 8px;
+    color: #e4e9f7;
+
+    &:focus {
+      outline: 1px solid var(--gold);
+    }
+  }
+
+  input[name='gameName'] {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  input[name='tagLine'] {
+    width: 130px;
+  }
+}
+
+.error {
+  color: #ff5470;
+  background: rgba(255, 84, 112, 0.08);
+  border: 1px solid rgba(255, 84, 112, 0.4);
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+}
+
+.profile {
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+
+    .icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      border: 2px solid var(--gold);
+    }
+
+    h2 {
+      margin: 0;
+      color: #fff;
+
+      small {
+        color: #7f8db3;
+        font-weight: 400;
+      }
+    }
+
+    .level {
+      color: var(--cyan);
+      font-size: 0.85rem;
+    }
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+
+    h3 {
+      color: var(--gold);
+      font-size: 1rem;
+    }
+  }
+
+  .rank-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    background: #0b1628;
+    border: 1px solid #1e2a45;
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.5rem;
+
+    &.mastery-row {
+      justify-content: flex-start;
+
+      .mk-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        border: 1px solid #22325a;
+      }
+    }
+
+    .tier {
+      display: block;
+      color: #aeb8d8;
+      font-size: 0.85rem;
+    }
+
+    .wl {
+      text-align: right;
+      color: #c9d1e8;
+      font-size: 0.85rem;
+
+      em {
+        display: block;
+        color: var(--cyan);
+        font-style: normal;
+      }
+    }
+  }
+
+  .muted {
+    color: #5a6584;
+  }
+}

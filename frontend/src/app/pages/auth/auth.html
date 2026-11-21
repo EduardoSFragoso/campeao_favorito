@@ -1,6 +1,5 @@
 <div class="auth-card">
   <h1>{{ mode() === 'login' ? 'Entrar' : 'Criar conta' }}</h1>
-  <p class="hint">Login próprio com JWT — seus favoritos ficam no Postgres (Neon) vinculados à sua conta.</p>
 
   <form (submit)="$event.preventDefault(); submit()">
     @if (mode() === 'register') {

@@ -70,23 +70,41 @@ export class Backend {
     });
   }
 
+  /**
+   * Atualização otimista: o coração vira no clique (a lista de ids é ajustada
+   * antes da resposta), o POST confirma em background e reverte em caso de erro.
+   */
   async addFavorite(championId: string, championName: string, title?: string): Promise<void> {
     if (!this.auth.isLoggedIn()) {
       throw new Error('Faça login para favoritar.');
     }
-    await firstValueFrom(
-      this.http.post<CfFavorite>(`${this.api.base}/api/favorites`, {
-        championId,
-        championName,
-        title: title ?? '',
-      }),
-    );
-    this.refreshFavorites();
+    if (!this._favIds().includes(championId)) {
+      this._favIds.update((ids) => [...ids, championId]);
+    }
+    try {
+      await firstValueFrom(
+        this.http.post<CfFavorite>(`${this.api.base}/api/favorites`, {
+          championId,
+          championName,
+          title: title ?? '',
+        }),
+      );
+    } catch (e) {
+      this._favIds.update((ids) => ids.filter((id) => id !== championId));
+      throw e;
+    }
   }
 
+  /** Mesma estratégia otimista, revertendo a remoção se o DELETE falhar. */
   async removeFavorite(championId: string): Promise<void> {
-    await firstValueFrom(this.http.delete(`${this.api.base}/api/favorites/${championId}`));
-    this.refreshFavorites();
+    const antes = this._favIds();
+    this._favIds.update((ids) => ids.filter((id) => id !== championId));
+    try {
+      await firstValueFrom(this.http.delete(`${this.api.base}/api/favorites/${championId}`));
+    } catch (e) {
+      this._favIds.set(antes);
+      throw e;
+    }
   }
 
   summoner(gameName: string, tagLine: string, platform: string) {

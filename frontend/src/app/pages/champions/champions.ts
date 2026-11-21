@@ -43,9 +43,7 @@ export class ChampionsPage {
     if (!Array.isArray(list)) return null;
     const q = this.query().trim().toLowerCase();
     if (!q) return list;
-    return list.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.title.toLowerCase().includes(q),
-    );
+    return list.filter((c) => c.name.toLowerCase().includes(q) || c.title.toLowerCase().includes(q));
   });
 
   protected onSearch(value: string): void {

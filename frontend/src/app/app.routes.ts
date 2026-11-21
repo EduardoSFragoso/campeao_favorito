@@ -8,8 +8,7 @@ export const routes: Routes = [
   },
   {
     path: 'champion/:id',
-    loadComponent: () =>
-      import('./pages/champion-detail/champion-detail').then((m) => m.ChampionDetailPage),
+    loadComponent: () => import('./pages/champion-detail/champion-detail').then((m) => m.ChampionDetailPage),
     title: 'Campeão — Campeões Favoritos LOL',
   },
   {

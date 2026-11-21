@@ -44,9 +44,7 @@ export class SummonerPage {
     this.loading.set(true);
     try {
       await this.dd.loadVersion(); // garante ícones (profileicon/champion)
-      const res = await firstValueFrom(
-        this.backend.summoner(this.gameName, this.tagLine, this.platform),
-      );
+      const res = await firstValueFrom(this.backend.summoner(this.gameName, this.tagLine, this.platform));
       this.profile.set(res);
     } catch (e: unknown) {
       this.error.set(messageOf(e, 'Falha na busca.'));

@@ -25,9 +25,7 @@ export class DataDragon {
   /** Carrega a versão do patch se ainda não estiver carregada. */
   async loadVersion(): Promise<void> {
     if (this._version()) return;
-    const versions = await firstValueFrom(
-      this.http.get<string[]>(`${DataDragon.BASE}/api/versions.json`),
-    );
+    const versions = await firstValueFrom(this.http.get<string[]>(`${DataDragon.BASE}/api/versions.json`));
     this._version.set(versions[0]);
   }
 

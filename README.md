@@ -107,7 +107,9 @@ CORS já liberado para `http://localhost:4200` (variável `CORS_ALLOWED_ORIGINS`
 O backend roda em uma **VM Oracle Cloud Always Free** (E2.1.Micro, Ubuntu) com:
 
 - **systemd** (`campeao-favorito.service`), com segredos em `/etc/campeao-favorito.env`
-  (chown root:600): `DB_URL`, `JWT_SECRET`, `RIOT_API_KEY`, `CORS_ALLOWED_ORIGINS`.
+  (chown root:600): `DB_URL`, `JWT_SECRET`, `RIOT_API_KEY`, `CORS_ALLOWED_ORIGINS` e
+  `SPRING_PROFILES_ACTIVE=prod` — o perfil de produção desliga Swagger/api-docs e **falha o boot**
+  se `JWT_SECRET` não estiver definida (ver `application-prod.yml`).
 - **nginx** como reverse proxy (8080 → 443) com **TLS-ALPN via acme.sh**
   (a porta 80 é dropada a montante pela OCI, então o certificado usa desafio TLS-ALPN na 443).
 - Deploy: build local (`./mvnw -B package -DskipTests`) → SFTP do jar para `/tmp` na VM →

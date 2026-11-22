@@ -1,0 +1,17 @@
+# Perfil de produção (VM Oracle): ativar com SPRING_PROFILES_ACTIVE=prod
+# (única linha nova no EnvironmentFile=/etc/campeao-favorito.env do systemd)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  jwt:
+    # sem default: se JWT_SECRET não estiver definida no ambiente, o boot falha (fail fast)
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:604800000}
+
+logging:
+  level:
+    br.com.favorito.api: INFO

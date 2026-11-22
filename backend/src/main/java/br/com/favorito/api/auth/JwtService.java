@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,8 +22,17 @@ public class JwtService {
 
   public JwtService(
       @Value("${app.jwt.secret}") String secret,
-      @Value("${app.jwt.expiration-ms}") long expirationMs) {
+      @Value("${app.jwt.expiration-ms}") long expirationMs,
+      Environment env) {
     if (SECRET_PLACEHOLDER.equals(secret)) {
+      if (env.matchesProfiles("prod")) {
+        // no perfil de produção o segredo tem de vir do ambiente (JWT_SECRET em
+        // /etc/campeao-favorito.env); subir com o placeholder público seria aceitar
+        // tokens forjados por qualquer um que leia este repositório
+        throw new IllegalStateException(
+            "JWT_SECRET não definida no perfil de produção. "
+                + "Defina JWT_SECRET no EnvironmentFile (openssl rand -base64 64).");
+      }
       // aceitável apenas em desenvolvimento local — mantém sessões entre restarts,
       // mas NUNCA use em produção (defina JWT_SECRET com openssl rand -base64 64)
       log.warn(

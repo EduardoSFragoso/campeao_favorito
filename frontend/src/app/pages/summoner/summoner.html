@@ -29,7 +29,7 @@
 @if (profile(); as p) {
   <section class="profile">
     <div class="head">
-      <img [src]="dd.profileIcon(p.profileIconId)" [alt]="p.name" class="icon" />
+      <img [src]="dd.profileIcon(p.profileIconId)" [alt]="p.gameName" class="icon" />
       <div>
         <h2>
           {{ p.gameName }}<small>#{{ p.tagLine }}</small>

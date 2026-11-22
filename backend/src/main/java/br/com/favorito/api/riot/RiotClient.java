@@ -62,12 +62,21 @@ public class RiotClient {
 
   public record Routing(String platform, String serverHost, String regionalHost) {}
 
+  public static java.util.Set<String> platforms() {
+    return PLATFORM_TO_REGIONAL.keySet();
+  }
+
   public Routing routing(String platform) {
     String plat = (platform == null || platform.isBlank()) ? "br1" : platform.toLowerCase();
+    // white-list obrigatória: a platform é colada dentro da URL do host abaixo — aceitar string
+    // arbitrária permitiria direcionar a Riot key para um host externo (SSRF)
+    if (!PLATFORM_TO_REGIONAL.containsKey(plat)) {
+      throw new IllegalArgumentException("Plataforma inválida: " + plat);
+    }
     return new Routing(
         plat,
         "https://" + plat + ".api.riotgames.com",
-        "https://" + PLATFORM_TO_REGIONAL.getOrDefault(plat, "americas") + ".api.riotgames.com");
+        "https://" + PLATFORM_TO_REGIONAL.get(plat) + ".api.riotgames.com");
   }
 
   public <T> T getServer(String platform, String path, Class<T> type, Object... uriVars) {

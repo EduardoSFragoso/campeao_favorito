@@ -45,6 +45,7 @@ export class SummonerPage {
     this.loading.set(true);
     try {
       await this.dd.loadVersion(); // garante ícones (profileicon/champion)
+      await this.dd.ensureChampionMap(); // mapa key numérico → id para ícones de maestria
       const res = await firstValueFrom(this.backend.summoner(this.gameName, this.tagLine, this.platform));
       this.profile.set(res);
     } catch (e: unknown) {

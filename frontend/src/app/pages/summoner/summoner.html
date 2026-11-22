@@ -1,18 +1,17 @@
 <h1 class="page-title">Buscar invocador 🎯</h1>
 <p class="hint">
   Dados ao vivo da Riot API: Account + Summoner + Elo + Maestria. Formato
-  <code>GameName#TAG</code>.
+  <code>GameName#TAG</code> — sem <code>#</code>, usa a tag da região selecionada.
 </p>
 
 <form class="search" (submit)="$event.preventDefault(); search()">
   <input
     type="text"
-    [(ngModel)]="gameName"
-    name="gameName"
-    placeholder="GameName (ex.: Hide on bush)"
+    [(ngModel)]="query"
+    name="query"
+    placeholder="GameName ou GameName#TAG (ex.: Galuverior ou Galuverior#BR1)"
     required
   />
-  <input type="text" [(ngModel)]="tagLine" name="tagLine" placeholder="#TAG (ex.: BR1)" required />
   <select [(ngModel)]="platform" name="platform">
     @for (p of platforms; track p.id) {
       <option [value]="p.id">{{ p.label }}</option>

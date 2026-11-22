@@ -1,0 +1,30 @@
+name: Monitor de health
+
+# Ping periódico no backend em produção. Se falhar, o job fica vermelho e o
+# GitHub envia a notificação de workflow agendado falhado para o dono do repo.
+# Execução on demand pelo botão "Run workflow" (útil para testar logo após deploy).
+
+on:
+  schedule:
+    # fora do congestionamento do topo da hora (0–15) na fila de agendados do GitHub
+    - cron: '43 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: |
+          for i in 1 2 3; do
+            if curl -sf --max-time 15 https://147-15-57-6.sslip.io/api/health; then
+              echo "health OK na tentativa $i"
+              exit 0
+            fi
+            echo "tentativa $i falhou; aguardando 30s (Tomcat pode estar subindo)"
+            sleep 30
+          done
+          echo "::error::health indisponível após 3 tentativas"
+          exit 1

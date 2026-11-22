@@ -19,9 +19,9 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - name: Verify (compile + spotless check)
+      - name: Verify (compile + tests + spotless check)
         working-directory: backend
-        run: ./mvnw -B verify -DskipTests
+        run: ./mvnw -B verify
 
   frontend:
     name: lint & build frontend

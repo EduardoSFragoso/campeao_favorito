@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -18,6 +20,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class RiotService {
+
+  private static final Logger log = LoggerFactory.getLogger(RiotService.class);
 
   private static final long PROFILE_TTL_MS = 60_000;
   private static final long ROTATION_TTL_MS = 5 * 60_000;
@@ -83,15 +87,29 @@ public class RiotService {
               withCache(
                   "ranked:" + summoner.id(),
                   () -> {
-                    RiotDtos.LeagueEntry[] arr =
-                        client.getServer(
+                    try {
+                      RiotDtos.LeagueEntry[] arr =
+                          client.getServer(
+                              platform,
+                              "/lol/league/v4/entries/by-summoner/{sid}",
+                              RiotDtos.LeagueEntry[].class,
+                              summoner.id());
+                      return arr == null
+                          ? List.<RiotDtos.LeagueEntry>of()
+                          : List.of(arr).stream().filter(e -> e.games() > 0).toList();
+                    } catch (RiotApiException e) {
+                      // League-V4 vem com 403 para chaves de dev/pessoais — degrada sem elo
+                      // em vez de falhar o perfil inteiro. Com chave de produção volta a mostrar.
+                      if (e.upstreamStatus == 403 || e.upstreamStatus == 404) {
+                        log.warn(
+                            "Elo indisponível para {} na {} (HTTP {}) — perfil sem ranqueada.",
+                            key,
                             platform,
-                            "/lol/league/v4/entries/by-summoner/{sid}",
-                            RiotDtos.LeagueEntry[].class,
-                            summoner.id());
-                    return arr == null
-                        ? List.<RiotDtos.LeagueEntry>of()
-                        : List.of(arr).stream().filter(e -> e.games() > 0).toList();
+                            e.upstreamStatus);
+                        return List.<RiotDtos.LeagueEntry>of();
+                      }
+                      throw e;
+                    }
                   });
 
           List<RiotDtos.MasteryDto> mastery =

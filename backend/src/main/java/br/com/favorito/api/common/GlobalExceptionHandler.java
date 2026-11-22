@@ -37,6 +37,25 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Não encontrado."));
   }
 
+  /** Violação de formato/salt white list (gameName, tagLine, platform). */
+  @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+  public ResponseEntity<Map<String, Object>> constraint(
+      jakarta.validation.ConstraintViolationException e) {
+    String msg =
+        e.getConstraintViolations().stream()
+            .map(v -> v.getMessage())
+            .distinct()
+            .collect(Collectors.joining("; "));
+    return ResponseEntity.badRequest().body(Map.of("error", msg));
+  }
+
+  /** Argumento rejeitado na camada de domínio (platform fora da whitelist, p.ex.). */
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException e) {
+    return ResponseEntity.badRequest()
+        .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Requisição inválida."));
+  }
+
   /**
    * Rota inexistente (ex.: springdoc desligado em produção): 404 limpo — sem o catch-all abaixo,
    * cairia como 500 e mascararia o diagnóstico.

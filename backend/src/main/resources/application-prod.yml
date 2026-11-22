@@ -1,5 +1,11 @@
 # Perfil de produção (VM Oracle): ativar com SPRING_PROFILES_ACTIVE=prod
 # (única linha nova no EnvironmentFile=/etc/campeao-favorito.env do systemd)
+
+# nginx na frente: acredita em X-Forwarded-For/Proto (setado pelo proxy) —
+# é o que faz getRemoteAddr() devolver o IP do cliente e não o 127.0.0.1 do proxy
+server:
+  forward-headers-strategy: framework
+
 springdoc:
   api-docs:
     enabled: false

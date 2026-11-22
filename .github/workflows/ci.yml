@@ -42,6 +42,9 @@ jobs:
       - name: ESLint
         working-directory: frontend
         run: npm run lint
+      - name: Unit tests (vitest)
+        working-directory: frontend
+        run: npx ng test --watch=false
       - name: Build
         working-directory: frontend
         run: npx ng build

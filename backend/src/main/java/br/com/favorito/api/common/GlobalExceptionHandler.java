@@ -66,6 +66,20 @@ public class GlobalExceptionHandler {
         .body(Map.of("error", "Rota não encontrada: " + e.getResourcePath()));
   }
 
+  /**
+   * ResponseStatusException (o 429 do rate limit do login, p.ex.): sem este handler, a exceção
+   * cairia no catch-all genérico como 500 e mascararia o status original.
+   */
+  @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+  public ResponseEntity<Map<String, Object>> status(
+      org.springframework.web.server.ResponseStatusException e) {
+    String msg =
+        e.getReason() != null && !e.getReason().isBlank()
+            ? e.getReason()
+            : e.getStatusCode().toString();
+    return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", msg));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> generic(Exception e) {
     // detalhe completo só no log — a mensagem interna não vaza para o client

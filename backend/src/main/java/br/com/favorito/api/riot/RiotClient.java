@@ -4,6 +4,8 @@ import br.com.favorito.api.common.RiotApiException;
 import br.com.favorito.api.config.RiotProperties;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -22,6 +24,8 @@ import org.springframework.web.client.RestClientResponseException;
  */
 @Component
 public class RiotClient {
+
+  private static final Logger log = LoggerFactory.getLogger(RiotClient.class);
 
   private static final Map<String, String> PLATFORM_TO_REGIONAL =
       Map.ofEntries(
@@ -99,6 +103,7 @@ public class RiotClient {
           .retrieve()
           .body(type);
     } catch (RestClientResponseException e) {
+      log.warn("Riot API {} {} -> HTTP {}", baseUrl, path, e.getStatusCode().value());
       throw new RiotApiException(e.getStatusCode().value(), describe(e.getStatusCode().value()));
     }
   }

@@ -19,6 +19,38 @@ const PLATFORMS: { id: string; label: string }[] = [
   { id: 'tr1', label: 'Turquia (tr1)' },
 ];
 
+/** Tag de Riot ID padrão de cada plataforma (KR = "KR", EUW = "EUW" etc.). */
+const DEFAULT_TAG: Record<string, string> = {
+  br1: 'BR1',
+  na1: 'NA1',
+  euw1: 'EUW',
+  eun1: 'EUNE',
+  kr: 'KR',
+  jp1: 'JP1',
+  la1: 'LAN',
+  la2: 'LAS',
+  oc1: 'OCE',
+  tr1: 'TR1',
+};
+
+/** Tag digitada → plataforma que serve Summoner/League/Mastery. */
+const TAG_TO_PLATFORM: Record<string, string> = {
+  BR1: 'br1',
+  NA1: 'na1',
+  EUW: 'euw1',
+  EUW1: 'euw1',
+  EUNE: 'eun1',
+  EUN1: 'eun1',
+  KR: 'kr',
+  KR1: 'kr',
+  JP1: 'jp1',
+  LAN: 'la1',
+  LAS: 'la2',
+  OCE: 'oc1',
+  OC1: 'oc1',
+  TR1: 'tr1',
+};
+
 @Component({
   selector: 'app-summoner',
   imports: [FormsModule, DecimalPipe],
@@ -32,21 +64,34 @@ export class SummonerPage {
 
   protected readonly platforms = PLATFORMS;
   protected platform = 'br1';
-  protected gameName = 'Hide on bush';
-  protected tagLine = 'KR1';
+  protected query = 'Galuverior';
 
   protected readonly profile = signal<SummonerProfile | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly loading = signal(false);
 
   protected async search(): Promise<void> {
+    const raw = this.query.trim();
+    if (!raw) return;
+
+    // "GameName#TAG" → tag explícita (e plataforma derivada); só nome → tag padrão do dropdown
+    const hash = raw.lastIndexOf('#');
+    let gameName = raw;
+    let tagLine = DEFAULT_TAG[this.platform] ?? 'BR1';
+    if (hash > 0 && hash < raw.length - 1) {
+      gameName = raw.slice(0, hash).trim();
+      tagLine = raw.slice(hash + 1).trim().toUpperCase();
+      this.platform = TAG_TO_PLATFORM[tagLine] ?? this.platform;
+    }
+    if (!gameName || !tagLine) return;
+
     this.profile.set(null);
     this.error.set(null);
     this.loading.set(true);
     try {
       await this.dd.loadVersion(); // garante ícones (profileicon/champion)
       await this.dd.ensureChampionMap(); // mapa key numérico → id para ícones de maestria
-      const res = await firstValueFrom(this.backend.summoner(this.gameName, this.tagLine, this.platform));
+      const res = await firstValueFrom(this.backend.summoner(gameName, tagLine, this.platform));
       this.profile.set(res);
     } catch (e: unknown) {
       this.error.set(messageOf(e, 'Falha na busca.'));

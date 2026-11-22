@@ -33,21 +33,28 @@ const DEFAULT_TAG: Record<string, string> = {
   tr1: 'TR1',
 };
 
-/** Tag digitada → plataforma que serve Summoner/League/Mastery. */
+/** Tag digitada → plataforma que serve Summoner/League/Mastery (com aliases comuns). */
 const TAG_TO_PLATFORM: Record<string, string> = {
+  BR: 'br1',
   BR1: 'br1',
+  NA: 'na1',
   NA1: 'na1',
   EUW: 'euw1',
   EUW1: 'euw1',
+  EUN: 'eun1',
   EUNE: 'eun1',
   EUN1: 'eun1',
   KR: 'kr',
   KR1: 'kr',
+  JP: 'jp1',
   JP1: 'jp1',
   LAN: 'la1',
+  LA1: 'la1',
   LAS: 'la2',
+  LA2: 'la2',
   OCE: 'oc1',
   OC1: 'oc1',
+  TR: 'tr1',
   TR1: 'tr1',
 };
 
@@ -80,11 +87,18 @@ export class SummonerPage {
     let tagLine = DEFAULT_TAG[this.platform] ?? 'BR1';
     if (hash > 0 && hash < raw.length - 1) {
       gameName = raw.slice(0, hash).trim();
-      tagLine = raw
+      const typed = raw
         .slice(hash + 1)
         .trim()
         .toUpperCase();
-      this.platform = TAG_TO_PLATFORM[tagLine] ?? this.platform;
+      const plat = TAG_TO_PLATFORM[typed];
+      if (plat) {
+        // tag conhecida: deriva a plataforma e canonicaliza (BR→BR1, KR→KR…)
+        this.platform = plat;
+        tagLine = DEFAULT_TAG[plat] ?? typed;
+      } else {
+        tagLine = typed;
+      }
     }
     if (!gameName || !tagLine) return;
 
@@ -92,9 +106,12 @@ export class SummonerPage {
     this.error.set(null);
     this.loading.set(true);
     try {
-      await this.dd.loadVersion(); // garante ícones (profileicon/champion)
-      await this.dd.ensureChampionMap(); // mapa key numérico → id para ícones de maestria
-      const res = await firstValueFrom(this.backend.summoner(gameName, tagLine, this.platform));
+      // mapa de ícones e API do backend em paralelo — a 1ª busca da sessão
+      // não fica refém do download do champion.json
+      const [res] = await Promise.all([
+        firstValueFrom(this.backend.summoner(gameName, tagLine, this.platform)),
+        this.dd.ensureChampionMap(),
+      ]);
       this.profile.set(res);
     } catch (e: unknown) {
       this.error.set(messageOf(e, 'Falha na busca.'));

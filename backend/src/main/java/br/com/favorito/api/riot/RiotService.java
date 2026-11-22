@@ -65,23 +65,53 @@ public class RiotService {
     return withCache(
         "profile:" + platform + ":" + key,
         () -> {
-          RiotDtos.RiotAccount account =
-              client.getRegional(
-                  platform,
-                  "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
-                  RiotDtos.RiotAccount.class,
-                  gn,
-                  tl);
+          RiotDtos.RiotAccount account;
+          try {
+            account =
+                client.getRegional(
+                    platform,
+                    "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
+                    RiotDtos.RiotAccount.class,
+                    gn,
+                    tl);
+          } catch (RiotApiException e) {
+            if (e.upstreamStatus == 404) {
+              throw new RiotApiException(
+                  404,
+                  "Conta \""
+                      + key
+                      + "\" não encontrada — confira nome, tag e região (?platform=).");
+            }
+            throw e;
+          }
           if (account == null || account.puuid() == null) {
-            throw new RiotApiException(404, "Conta não encontrada: " + key);
+            throw new RiotApiException(
+                404,
+                "Conta \"" + key + "\" não encontrada — confira nome, tag e região (?platform=).");
           }
 
-          RiotDtos.RiotSummoner summoner =
-              client.getServer(
-                  platform,
-                  "/lol/summoner/v4/summoners/by-puuid/{puuid}",
-                  RiotDtos.RiotSummoner.class,
-                  account.puuid());
+          RiotDtos.RiotSummoner summoner;
+          try {
+            summoner =
+                client.getServer(
+                    platform,
+                    "/lol/summoner/v4/summoners/by-puuid/{puuid}",
+                    RiotDtos.RiotSummoner.class,
+                    account.puuid());
+          } catch (RiotApiException e) {
+            if (e.upstreamStatus == 404) {
+              // a conta existe na Riot (Account-V1 achou o PUUID), mas não tem perfil de
+              // LoL naquele servidor — diferente de "conta não encontrada" (que falha acima)
+              throw new RiotApiException(
+                  404,
+                  "Conta \""
+                      + key
+                      + "\" existe, mas não tem LoL no servidor \""
+                      + platform
+                      + "\". Confira a região (?platform=).");
+            }
+            throw e;
+          }
 
           List<RiotDtos.LeagueEntry> ranked =
               withCache(

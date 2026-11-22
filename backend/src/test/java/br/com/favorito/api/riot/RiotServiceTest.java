@@ -168,6 +168,76 @@ class RiotServiceTest {
   }
 
   @Test
+  @DisplayName("conta inexistente (client lança 404): mensagem manda conferir nome/tag/região")
+  void contaInexistenteComExcecaoDoClient() {
+    when(client.getRegional(
+            eq("br1"),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            eq("hideonbush"),
+            eq("KR")))
+        .thenThrow(new RiotApiException(404, "Não encontrado na Riot API."));
+
+    RiotApiException ex =
+        assertThrows(
+            RiotApiException.class, () -> service.summonerProfile("hideonbush", "KR", "br1"));
+    assertEquals(404, ex.upstreamStatus);
+    assertEquals(
+        "Conta \"HIDEONBUSH#KR\" não encontrada — confira nome, tag e região (?platform=).",
+        ex.getMessage());
+  }
+
+  @Test
+  @DisplayName("conta existe mas sem LoL no servidor (summoner 404): mensagem diferenciada")
+  void contaExisteMasSemLolNoServidor() {
+    when(client.getRegional(
+            eq("kr"),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            eq("hideonbush"),
+            eq("KR")))
+        .thenReturn(account());
+    when(client.getServer(
+            eq("kr"),
+            contains("/lol/summoner/v4/summoners/by-puuid"),
+            eq(RiotDtos.RiotSummoner.class),
+            eq("puuid-1")))
+        .thenThrow(new RiotApiException(404, "Não encontrado na Riot API."));
+
+    RiotApiException ex =
+        assertThrows(
+            RiotApiException.class, () -> service.summonerProfile("hideonbush", "KR", "kr"));
+    assertEquals(404, ex.upstreamStatus);
+    assertEquals(
+        "Conta \"HIDEONBUSH#KR\" existe, mas não tem LoL no servidor \"kr\". Confira a região"
+            + " (?platform=).",
+        ex.getMessage());
+  }
+
+  @Test
+  @DisplayName("summoner com outro status (ex.: 500): propaga — não vira mensagem de sem-LoL")
+  void summonerComOutroStatusPropaga() {
+    when(client.getRegional(
+            eq("kr"),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            eq("hideonbush"),
+            eq("KR")))
+        .thenReturn(account());
+    when(client.getServer(
+            eq("kr"),
+            contains("/lol/summoner/v4/summoners/by-puuid"),
+            eq(RiotDtos.RiotSummoner.class),
+            eq("puuid-1")))
+        .thenThrow(new RiotApiException(500, "Riot API retornou HTTP 500."));
+
+    RiotApiException ex =
+        assertThrows(
+            RiotApiException.class, () -> service.summonerProfile("hideonbush", "KR", "kr"));
+    assertEquals(500, ex.upstreamStatus);
+  }
+
+  @Test
   @DisplayName("cache: segunda busca do mesmo invocador não refaz as chamadas à Riot")
   void cacheEvitaRebusca() {
     stubAccountAndSummoner("sum-cache");

@@ -40,13 +40,16 @@ public final class RiotDtos {
     }
   }
 
-  // Champion Mastery-V4 (rota de servidor)
+  // Champion Mastery-V4 (rota de servidor).
+  // Campos em wrapper (Boolean/Long) toleram ausência: a Riot removeu chestGranted
+  // (baús fim de 2025) e segue adicionando campos (nextSeasonMilestone etc.).
+  @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
   public record MasteryDto(
       int championId,
       int championLevel,
       int championPoints,
-      boolean chestGranted,
-      long lastPlayTime) {}
+      Boolean chestGranted,
+      Long lastPlayTime) {}
 
   // Champion-V3 — rotação semanal (rota de servidor)
   public record ChampionRotation(

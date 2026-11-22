@@ -80,7 +80,10 @@ export class SummonerPage {
     let tagLine = DEFAULT_TAG[this.platform] ?? 'BR1';
     if (hash > 0 && hash < raw.length - 1) {
       gameName = raw.slice(0, hash).trim();
-      tagLine = raw.slice(hash + 1).trim().toUpperCase();
+      tagLine = raw
+        .slice(hash + 1)
+        .trim()
+        .toUpperCase();
       this.platform = TAG_TO_PLATFORM[tagLine] ?? this.platform;
     }
     if (!gameName || !tagLine) return;

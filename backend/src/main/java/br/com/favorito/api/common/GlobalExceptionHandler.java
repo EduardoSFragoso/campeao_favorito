@@ -3,14 +3,19 @@ package br.com.favorito.api.common;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(RiotApiException.class)
   public ResponseEntity<Map<String, Object>> riot(RiotApiException e) {
@@ -32,9 +37,21 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Não encontrado."));
   }
 
+  /**
+   * Rota inexistente (ex.: springdoc desligado em produção): 404 limpo — sem o catch-all abaixo,
+   * cairia como 500 e mascararia o diagnóstico.
+   */
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<Map<String, Object>> noResource(NoResourceFoundException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", "Rota não encontrada: " + e.getResourcePath()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> generic(Exception e) {
+    // detalhe completo só no log — a mensagem interna não vaza para o client
+    log.error("Erro não tratado", e);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(Map.of("error", "Erro interno: " + e.getMessage()));
+        .body(Map.of("error", "Erro interno."));
   }
 }

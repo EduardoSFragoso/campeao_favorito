@@ -19,6 +19,7 @@ export class DataDragon {
 
   /** Mapa key numérico (Riot API) → id do Data Dragon, ex.: 266 → "Aatrox". */
   private readonly keyToId = new Map<string, string>();
+  private championMapLoaded = false;
 
   private readonly http = inject(HttpClient);
 
@@ -27,6 +28,16 @@ export class DataDragon {
     if (this._version()) return;
     const versions = await firstValueFrom(this.http.get<string[]>(`${DataDragon.BASE}/api/versions.json`));
     this._version.set(versions[0]);
+  }
+
+  /** Garante o mapa key→id (páginas que usam squareIconByKey fora do grid de campeões). */
+  async ensureChampionMap(): Promise<void> {
+    if (this.championMapLoaded) return;
+    try {
+      await firstValueFrom(this.listChampions());
+    } catch {
+      // falha de CDN não deve derrubar a página; tenta de novo na próxima busca
+    }
   }
 
   /** Lista todos os campeões (pt_BR). */
@@ -40,6 +51,7 @@ export class DataDragon {
       map((res) => {
         const champs = Object.values(res.data);
         champs.forEach((c) => this.keyToId.set(c.key, c.id));
+        this.championMapLoaded = true;
         return champs;
       }),
     );

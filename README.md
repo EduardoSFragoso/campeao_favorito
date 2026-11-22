@@ -19,15 +19,15 @@ da **Riot Games API** — elo ranqueado, nível e top maestria.
 | Camada | Tecnologia | Onde roda |
 |---|---|---|
 | Frontend | Angular 21 (signals, standalone) | GitHub Pages (estático) |
-| Backend | Spring Boot 4.2 · Java 25 · Lombok · DevTools · springdoc OpenAPI | local (8080) — **futuro: VM Oracle Cloud** |
+| Backend | Spring Boot 4.2 · Java 25 · Lombok · springdoc OpenAPI | **VM Oracle Cloud Free Tier** (produção, HTTPS) + local (8080) em dev |
 | Banco | PostgreSQL 17 serverless | Neon (free tier) |
 | Dados de jogo | Data Dragon (sem chave) + Riot API (com chave) | CDN / externo |
 
-> **Importante:** o GitHub Pages serve apenas arquivos estáticos. O backend precisa rodar em
-> outro lugar. **Plano de hospedagem do backend: VM Oracle Cloud Free Tier** (Ubuntu, JDK 25 +
-> systemd + nginx/TLS) — ver §6. Enquanto isso, roda local. Splasharts e infos de campeões
-> **não usam a Riot API** — vêm do Data Dragon, que é aberto e ilimitado. A Riot API entra para
-> dados *ao vivo* (invocador, elo, maestria, rotação).
+> **Em produção:** app em `https://eduardosfragoso.github.io/campeao_favorito/` e backend em
+> `https://147-15-57-6.sslip.io` (VM Oracle Cloud, Ubuntu + systemd + nginx/TLS — a saga completa
+> do deploy está em [docs/fase4-oracle-vm.md](docs/fase4-oracle-vm.md)). Tempo real (invocador,
+> elo, maestria) vem da Riot API; splasharts e infos de campeões vêm do **Data Dragon**, aberto
+> e ilimitado — a Riot API nunca é chamada para conteúdo estático.
 
 ## Pré-requisitos
 
@@ -56,9 +56,10 @@ As tabelas (`users`, `favorites`) são criadas automaticamente no boot (`ddl-aut
    *Regenerate* quando expirar; o backend mostra erro `403` amigável quando isso acontece).
 3. **Desenvolvimento local (fase atual):** chave de Development serve
    — nada é público ainda.
-4. **Antes de publicar (VM Oracle):** solicite a chave **Personal** (protótipo individual) no
+4. **Para produção (VM Oracle):** solicite a chave **Personal** (protótipo individual) no
    próprio portal — ela não expira em 24h e cobre projetos pessoais não-comerciais. Para
    escala/produção, a **Production Key** exige *application* com revisão da Riot
+   (rascunho pronto em [docs/riot-personal-key-application.md](docs/riot-personal-key-application.md)).
    (1 chave por projeto; nada de afirmar endosso/parceria).
 5. A chave **nunca** sai do backend (`RIOT_API_KEY` via env). O front não a acessa jamais.
 
@@ -96,29 +97,24 @@ CORS já liberado para `http://localhost:4200` (variável `CORS_ALLOWED_ORIGINS`
 
 1. Suba o repositório e ative *Settings → Pages → Source: GitHub Actions*.
 2. Crie a variável de repositório `API_URL` com a URL **pública** do backend
-   (ex.: `https://api.seudominio.com` — na fase da VM Oracle será o IP/domínio dela) —
+   (hoje: `https://147-15-57-6.sslip.io`) —
    o workflow reescreve `config.json` no deploy.
 3. Push em `main` → o workflow [deploy-gh-pages.yml](.github/workflows/deploy-gh-pages.yml)
    faz build com `--base-href "/<repo>/"` e publica.
 
-## 6. Backend na VM Oracle Cloud (futuro próximo)
+## 6. Backend na VM Oracle Cloud (produção)
 
-Logo o backend sai do seu computador para uma **VM Oracle Cloud Always Free**
-(ideal: Ubuntu + Ampere A1; alternativo: E2.1.Micro). Checklist planejado:
+O backend roda em uma **VM Oracle Cloud Always Free** (E2.1.Micro, Ubuntu) com:
 
-1. Criar a VM (região perto do server BR) e liberar *Security List*: 22 (seu IP) + 443/80.
-2. Ubuntu: `apt install openjdk-25-jdk-headless nginx certbot python3-certbot-nginx`.
-3. Deploy do jar (`./mvnw clean package -DskipTests` → `scp target/*.api-0.0.1-SNAPSHOT.jar`).
-4. Rodar via **systemd**, com segredos num arquivo `/etc/campeao-favorito.env` (chown root:600):
-   o mesmo conjunto de variáveis do §3 (`DB_URL`, `JWT_SECRET`, `RIOT_API_KEY`,
-   `CORS_ALLOWED_ORIGINS=https://<user>.github.io`).
-5. **nginx** como reverse proxy (8080 → 443) + **Certbot** para TLS (`apt` serve 80/443;
-   nenhum IP precisa estar no CORS além do do Pages).
-6. Atualizar a variável `API_URL` do repositório (ex.: `https://dominio-ou-ip`) e reprocessar
-   o deploy do Pages.
+- **systemd** (`campeao-favorito.service`), com segredos em `/etc/campeao-favorito.env`
+  (chown root:600): `DB_URL`, `JWT_SECRET`, `RIOT_API_KEY`, `CORS_ALLOWED_ORIGINS`.
+- **nginx** como reverse proxy (8080 → 443) com **TLS-ALPN via acme.sh**
+  (a porta 80 é dropada a montante pela OCI, então o certificado usa desafio TLS-ALPN na 443).
+- Deploy: build local (`./mvnw -B package -DskipTests`) → SFTP do jar para `/tmp` na VM →
+  `sudo mv` para `/opt/campeao-favorito/app.jar` → `sudo systemctl restart campeao-favorito`.
 
-Quando configurar a VM, me chame: eu preparo os scripts de deploy (`systemd unit`, cópia)
-e um workflow opcional de *deploy contínuo* para a VM (via SSH).
+O passo a passo completo (firewall, Security List, certificados, troubleshooting da Riot API)
+está em [docs/fase4-oracle-vm.md](docs/fase4-oracle-vm.md).
 
 ## Endpoints
 

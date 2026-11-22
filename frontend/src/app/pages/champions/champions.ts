@@ -44,7 +44,14 @@ export class ChampionsPage {
     if (!Array.isArray(list)) return null;
     const q = this.query().trim().toLowerCase();
     if (!q) return list;
-    return list.filter((c) => c.name.toLowerCase().includes(q) || c.title.toLowerCase().includes(q));
+    // busca apenas pelo nome do campeão (título/descricao não entram no match)
+    return list.filter((c) => {
+      const n = c.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      return n.includes(q.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    });
   });
 
   protected onSearch(value: string): void {

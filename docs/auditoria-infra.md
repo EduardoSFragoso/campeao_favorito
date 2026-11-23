@@ -2,6 +2,8 @@
 
 Checklist para projetos com **frontend no GitHub Pages, backend em VM (Oracle) e Postgres no Neon**, tudo no mesmo repositório. É referenciado pelo `AGENTS.md`.
 
+Os comandos e nomes abaixo já preenchidos com os valores reais deste projeto (`campeao_favorito`); o resultado da última auditoria está na seção **Estado da auditoria**, no fim do documento.
+
 **Regra de ouro:** nunca cole segredos reais (senhas, tokens, chaves, `DATABASE_URL` completa). Mascare valores e hosts em qualquer saída enviada a uma IA.
 
 ## Ordem das etapas
@@ -62,7 +64,7 @@ FROM pg_roles WHERE rolname NOT LIKE 'pg_%';
 
 SELECT grantee, table_schema, table_name, privilege_type
 FROM information_schema.role_table_grants
-WHERE grantee = 'NOME_DA_ROLE_DA_APLICACAO'
+WHERE grantee = 'campeao_app'
 ORDER BY table_schema, table_name;
 ```
 
@@ -72,22 +74,23 @@ Comandos de **leitura** para a pessoa executar na VM (mascare IPs e hostnames an
 
 ```bash
 ss -tlnp
-sudo ufw status verbose
 sudo sshd -T | grep -Ei 'passwordauthentication|permitrootlogin|pubkeyauthentication'
 systemctl list-units --type=service --state=running --no-pager
-stat -c '%a %U:%G %n' /etc/NOME_DO_APP/*.env
+stat -c '%a %U:%G %n' /etc/campeao-favorito.env
 ```
 
 O último comando mostra só as permissões do arquivo de ambiente (o esperado é `600`), sem ler o conteúdo.
+
+No Ubuntu da Oracle **não há `ufw`**; o firewall na máquina é `iptables` (`sudo iptables -S` para leitura), e o filtro de verdade é a Security List do console.
 
 No console da Oracle, confira a **Security List / NSG**: só 80 e 443 públicas e SSH restrito.
 
 Verificações de HTTPS e CORS, a partir de qualquer máquina:
 
 ```bash
-curl -sI https://api.exemplo.com | head -n 5
-curl -s -D - -o /dev/null -H 'Origin: https://evil.example' https://api.exemplo.com/health
-curl -s -D - -o /dev/null -H 'Origin: https://USUARIO.github.io' https://api.exemplo.com/health
+curl -sI https://147-15-57-6.sslip.io | head -n 5
+curl -s -D - -o /dev/null -H 'Origin: https://evil.example' https://147-15-57-6.sslip.io/api/health
+curl -s -D - -o /dev/null -H 'Origin: https://eduardosfragoso.github.io' https://147-15-57-6.sslip.io/api/health
 ```
 
 - O Pages é https, então a API também precisa ser (domínio e certificado válidos, por exemplo Caddy ou nginx com certbot).
@@ -130,3 +133,17 @@ Confirme que cada teste novo **falha** no código antigo antes de confiar nele.
 ## O que o agente não deve fazer sem confirmação
 
 DROP, TRUNCATE, apagar volumes ou branches, alterar firewall ou Security List, reiniciar serviços, aplicar migração na produção, reescrever o histórico do Git ou fazer push forçado.
+
+**Regra adicional deste projeto:** quem verifica e aperta o merge é o dono. O agente abre o PR, espera a CI ficar verde e **para** — nunca aprova nem faz merge por conta própria (ver `CONTRIBUTING.md`).
+
+## Estado da auditoria neste projeto (23/11/2026)
+
+Auditoria completa encerrada. Resumo do que foi verificado (detalhes e comandos no `handoff.md`):
+
+- **Repositório:** nenhum segredo no código nem no histórico (`gitleaks git --redact -v` = *no leaks found*; falso positivo do `JwtServiceTest` silenciado por `.gitleaks.toml` na raiz + `gitleaks:allow` inline).
+- **Neon:** produção no projeto correto (`ep-rapid-resonance-*`); role mínima `campeao_app` (sem CREATEDB/CREATEROLE, CREATE restrito ao schema public); migração Flyway aplicada e validada ponta a ponta. O projeto errado (`ep-tiny-glitter`) foi esvaziado e sua branch deletada.
+- **VM:** só 22/443/8080 no `ss -tlnp`; 8080 bloqueado de fora pela Security List (timeout de fora); rpcbind desativado; env com `600 ubuntu:ubuntu`; SSH só por chave.
+- **CORS/HTTPS:** origem estranha → 403 sem `Access-Control-Allow-Origin`; origem do Pages → 200 com ACAO exata.
+- **CI/branch:** ruleset `main-protection` ativo (PR obrigatório, os dois jobs do `ci.yml` como checks, linear history, rebase only); Dependabot ativo; CI testando Flyway do zero com Postgres efêmero.
+
+Pendência conhecida: chave de produção da Riot (elo ranqueado hoje roda em modo degradado).

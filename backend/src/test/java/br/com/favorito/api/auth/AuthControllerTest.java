@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.favorito.api.common.DuplicateResourceException;
+import br.com.favorito.api.common.InvalidCredentialsException;
 import br.com.favorito.api.config.SecurityConfig;
 import br.com.favorito.api.config.TestPropertiesConfig;
 import org.junit.jupiter.api.Test;
@@ -89,6 +91,32 @@ class AuthControllerTest {
                 .contentType("application/json")
                 .content("{\"email\":\"a@b.dev\",\"password\":\"12345678\"}"))
         .andExpect(status().isTooManyRequests());
+  }
+
+  @Test
+  void loginComCredenciaisInvalidasRetorna401Nao500() throws Exception {
+    when(authService.login(any())).thenThrow(new InvalidCredentialsException());
+
+    mvc.perform(
+            post("/api/auth/login")
+                .contentType("application/json")
+                .content("{\"email\":\"a@b.dev\",\"password\":\"errada1234\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error").value("E-mail ou senha inválidos."));
+  }
+
+  @Test
+  void registerComEmailDuplicadoRetorna409Nao500() throws Exception {
+    when(authService.register(any()))
+        .thenThrow(new DuplicateResourceException("E-mail já cadastrado."));
+
+    mvc.perform(
+            post("/api/auth/register")
+                .contentType("application/json")
+                .content(
+                    "{\"email\":\"a@b.dev\",\"password\":\"12345678\",\"displayName\":\"Ana\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error").value("E-mail já cadastrado."));
   }
 
   @Test

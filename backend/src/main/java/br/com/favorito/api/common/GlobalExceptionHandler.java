@@ -80,6 +80,22 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(e.getStatusCode()).body(Map.of("error", msg));
   }
 
+  /**
+   * Credenciais inválidas (401): sem handler específico, o catch-all genérico {@link
+   * #generic(Exception)} captura antes da anotação {@code @ResponseStatus} da exceção e devolve
+   * 500, o que mascara o erro certo pro front.
+   */
+  @ExceptionHandler(InvalidCredentialsException.class)
+  public ResponseEntity<Map<String, Object>> invalidCredentials(InvalidCredentialsException e) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
+  }
+
+  /** Recurso duplicado (409) — mesmo caso do acima: precisa de handler específico. */
+  @ExceptionHandler(DuplicateResourceException.class)
+  public ResponseEntity<Map<String, Object>> duplicate(DuplicateResourceException e) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> generic(Exception e) {
     // detalhe completo só no log — a mensagem interna não vaza para o client

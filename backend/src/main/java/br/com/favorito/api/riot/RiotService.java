@@ -170,6 +170,54 @@ public class RiotService {
         });
   }
 
+  /**
+   * Maestria COMPLETA por campeão (Champion Mastery-V4 sem /top). Usada pelo grid para badge de
+   * nível de maestria. Resolve a conta igual ao perfil (mesmo tratamento de 404), cacheia por conta
+   * — o payload só muda após partidas jogadas.
+   */
+  public List<RiotDtos.MasteryDto> masteries(String gameName, String tagLine, String platform) {
+    String gn = gameName.trim();
+    String tl = tagLine.trim();
+    String key = gn.toUpperCase() + "#" + tl.toUpperCase();
+
+    return withCache(
+        "masteryAll:" + platform + ":" + key,
+        () -> {
+          RiotDtos.RiotAccount account;
+          try {
+            account =
+                client.getRegional(
+                    platform,
+                    "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
+                    RiotDtos.RiotAccount.class,
+                    gn,
+                    tl);
+          } catch (RiotApiException e) {
+            if (e.upstreamStatus == 404) {
+              throw new RiotApiException(
+                  404,
+                  "Conta \""
+                      + key
+                      + "\" não encontrada — confira nome, tag e região (?platform=).");
+            }
+            throw e;
+          }
+          if (account == null || account.puuid() == null) {
+            throw new RiotApiException(
+                404,
+                "Conta \"" + key + "\" não encontrada — confira nome, tag e região (?platform=).");
+          }
+
+          RiotDtos.MasteryDto[] arr =
+              client.getServer(
+                  platform,
+                  "/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}",
+                  RiotDtos.MasteryDto[].class,
+                  account.puuid());
+          return arr == null ? List.<RiotDtos.MasteryDto>of() : List.of(arr);
+        });
+  }
+
   public RiotDtos.ChampionRotation rotation(String platform) {
     Cached<RiotDtos.ChampionRotation> hit = rotationCache.get();
     if (hit != null && hit.expiresAt() > System.currentTimeMillis()) {

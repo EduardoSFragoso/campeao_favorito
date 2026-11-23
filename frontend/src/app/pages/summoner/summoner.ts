@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { Backend, SummonerProfile } from '../../core/backend.service';
 import { DataDragon } from '../../core/data-dragon.service';
+import { SummonerStore } from '../../core/summoner-store.service';
 import { messageOf } from '../../core/api-error';
 import { resolveSummonerQuery } from './tag-resolver';
 
@@ -30,6 +31,7 @@ const PLATFORMS: { id: string; label: string }[] = [
 export class SummonerPage {
   protected readonly dd = inject(DataDragon);
   protected readonly backend = inject(Backend);
+  private readonly summonerStore = inject(SummonerStore);
 
   protected readonly platforms = PLATFORMS;
   protected platform = 'br1';
@@ -63,6 +65,14 @@ export class SummonerPage {
         this.dd.ensureChampionMap(),
       ]);
       this.profile.set(res);
+      // registra o último invocador buscado para os badges de maestria do grid;
+      // falha aqui não derruba o perfil (só fica sem badge)
+      try {
+        const masteries = await firstValueFrom(this.backend.masteries(gameName, tagLine, this.platform));
+        this.summonerStore.set(res, masteries ?? [], this.platform);
+      } catch {
+        this.summonerStore.clear();
+      }
     } catch (e: unknown) {
       this.error.set(messageOf(e, 'Falha na busca.'));
     } finally {

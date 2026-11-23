@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { ApiUrl } from './api-url.service';
 import { Auth } from './auth.service';
+import type { MasteryEntry } from './summoner-store.service';
 
 /** Favorito conforme a tabela do Neon (via backend). */
 export interface CfFavorite {
@@ -109,6 +110,13 @@ export class Backend {
 
   summoner(gameName: string, tagLine: string, platform: string) {
     return this.http.get<SummonerProfile>(`${this.api.base}/api/riot/summoner`, {
+      params: { gameName, tagLine, platform },
+    });
+  }
+
+  /** Maestria completa (nível por campeão) — alimenta o badge no grid. */
+  masteries(gameName: string, tagLine: string, platform: string) {
+    return this.http.get<MasteryEntry[]>(`${this.api.base}/api/riot/masteries`, {
       params: { gameName, tagLine, platform },
     });
   }

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.favorito.api.common.RiotApiException;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -265,5 +266,79 @@ class RiotServiceTest {
             contains("/lol/league/v4/entries/by-summoner"),
             eq(RiotDtos.LeagueEntry[].class),
             any()); // ranked é cacheado por summoner id — a 2ª busca vem do cache
+  }
+
+  // ---------- masteries (lista completa por conta, sem /top) ----------
+
+  private void stubContaeMaestrias() {
+    when(client.getRegional(
+            eq("br1"),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            eq("hideonbush"),
+            eq("KR")))
+        .thenReturn(account());
+    when(client.getServer(
+            eq("br1"),
+            contains("/champion-masteries/by-puuid"),
+            eq(RiotDtos.MasteryDto[].class),
+            eq("puuid-1")))
+        .thenReturn(
+            new RiotDtos.MasteryDto[] {
+              new RiotDtos.MasteryDto(157, 7, 123456, null, 1700000000000L),
+              new RiotDtos.MasteryDto(412, 3, 999, null, null),
+            });
+  }
+
+  @Test
+  @DisplayName("masteries: lista completa (sem /top) mapeada por conta")
+  void maestriasCompletas() {
+    stubContaeMaestrias();
+
+    List<RiotDtos.MasteryDto> maestrias = service.masteries("hideonbush", "KR", "br1");
+
+    assertEquals(2, maestrias.size());
+    assertEquals(157, maestrias.get(0).championId());
+    assertEquals(7, maestrias.get(0).championLevel());
+    assertEquals(412, maestrias.get(1).championId());
+  }
+
+  @Test
+  @DisplayName("masteries: cache evita rebusca da conta/via em chamada repetida")
+  void maestriasCacheEvitaRebusca() {
+    stubContaeMaestrias();
+
+    service.masteries("hideonbush", "KR", "br1");
+    service.masteries("Hideonbush", "kr", "br1");
+
+    verify(client, times(1))
+        .getRegional(
+            eq("br1"),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            any(),
+            any());
+    verify(client, times(1))
+        .getServer(
+            eq("br1"),
+            contains("/champion-masteries/by-puuid"),
+            eq(RiotDtos.MasteryDto[].class),
+            any());
+  }
+
+  @Test
+  @DisplayName("masteries: conta inexistente → RiotApiException 404")
+  void maestriasContaInexistente() {
+    when(client.getRegional(
+            eq("br1"),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            eq("naoexiste"),
+            eq("BR1")))
+        .thenReturn(null);
+
+    RiotApiException ex =
+        assertThrows(RiotApiException.class, () -> service.masteries("naoexiste", "BR1", "br1"));
+    assertEquals(404, ex.upstreamStatus);
   }
 }

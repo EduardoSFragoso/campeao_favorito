@@ -114,4 +114,43 @@ class RiotControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.freeChampionIds[0]").value(266));
   }
+
+  // ---------- masteries ----------
+
+  private List<RiotDtos.MasteryDto> maestrias() {
+    return List.of(new RiotDtos.MasteryDto(157, 7, 123456, null, 1700000000000L));
+  }
+
+  @Test
+  void masteriesSemLoginÉBloqueadoPelaCadeiaDeSegurança() throws Exception {
+    mvc.perform(get("/api/riot/masteries").param("gameName", "Galuverior").param("tagLine", "BR1"))
+        .andExpect(status().isForbidden());
+    verify(riotService, never()).masteries("Galuverior", "BR1", "br1");
+  }
+
+  @Test
+  void masteriesComLoginDelegaComAPlatformDefault() throws Exception {
+    when(riotService.masteries("Galuverior", "BR1", "br1")).thenReturn(maestrias());
+
+    mvc.perform(
+            get("/api/riot/masteries")
+                .with(user("7"))
+                .param("gameName", "Galuverior")
+                .param("tagLine", "BR1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].championId").value(157))
+        .andExpect(jsonPath("$[0].championLevel").value(7));
+  }
+
+  @Test
+  void masteriesComGameNameComBarraÉRejeitadoCom400() throws Exception {
+    mvc.perform(
+            get("/api/riot/masteries")
+                .with(user("7"))
+                .param("gameName", "evil.com/x")
+                .param("tagLine", "BR1"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").exists());
+    verify(riotService, never()).masteries("evil.com/x", "BR1", "br1");
+  }
 }

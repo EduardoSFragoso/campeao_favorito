@@ -64,6 +64,13 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   morar junto (já mordido: `DROP` de tabela de terceiro recuperado via point-in-time restore).
 - **Front chamando a API**: por HTTPS, origem servida em `config.json` gerado na CI
   (variável de repositório `API_URL`).
+- **Cromas (Community Dragon)**: o frontend busca
+  `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{key}.json`
+  (key numérico do campeão; CDN estático, sem chave de API). Todas as cromas de uma skin
+  compartilham a MESMA imagem de preview — o que diferencia cada croma é o par de hex em
+  `colors` (renderizado como amostra/gradiente CSS). CDN fora → a página degrada sem amostras,
+  sem erro visível. O card da skin (modal) mostra o splash do Data Dragon, que já é a
+  resolução máxima disponível.
 
 ## Workflow de Git
 
@@ -94,7 +101,7 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   verificadas: Neon (role mínima + Flyway em produção), VM (portas, env 600, SSH só chave,
   rpcbind desativado, Security List validada externamente), CORS (origem estranha 403 sem ACAO,
   origem do Pages 200 com ACAO exata), Dependabot, CI com Postgres efêmero, ruleset de proteção.
-  Único opcional pendente: rodar `gitleaks git --redact` (varredura heurística do histórico
-  não achou segredos).
+  `gitleaks git --redact` rodado localmente após o falso positivo do `JwtServiceTest`:
+  **no leaks found** (allowlist cirúrgica em `.gitleaks.toml`).
 - Com chave de produção pessoal da Riot, o elo ranqueado volta a ser exibido (o degrade
   já está pronto).

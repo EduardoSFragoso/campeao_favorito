@@ -12,6 +12,9 @@ import { firstValueFrom, from, map, switchMap } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class DataDragon {
   private static readonly BASE = 'https://ddragon.leagueoflegends.com';
+  /** Community Dragon: JSON de assets por campeão (cromas), sem chave de API. */
+  private static readonly CD_BASE =
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default';
 
   private readonly _version = signal<string | null>(null);
   /** Versão atual do patch (ex.: "26.1.1"). */
@@ -72,6 +75,31 @@ export class DataDragon {
   /** Rotação semanal via nosso backend (Riot API Champion-V3). */
   rotation(apiBase: string) {
     return this.http.get<{ freeChampionIds: number[] }>(`${apiBase}/api/riot/rotation`);
+  }
+
+  /**
+   * Cromas de um campeão a partir do Community Dragon (`key` numérico, ex. 266).
+   * Não depende da versão do Data Dragon nem precisa de loadVersion().
+   *
+   * Detalhe do payload: todas as cromas de uma skin compartilham a mesma
+   * imagem de preview — o que diferencia cada croma é o par de hex em
+   * `colors` (usado na amostra de cor da UI).
+   *
+   * Falha (CDN fora) deve ser tratada pelo chamador; a UI degrada sem amostras.
+   */
+  chromas(championKey: string | number): Promise<ChromaRef[]> {
+    return firstValueFrom(
+      this.http.get<CDragonChampion>(`${DataDragon.CD_BASE}/v1/champions/${championKey}.json`),
+    ).then((res) =>
+      res.skins.flatMap((skin) =>
+        (skin.chromas ?? []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          colors: c.colors?.length ? c.colors : ChromaFallbackColors,
+          skinNum: skin.num,
+        })),
+      ),
+    );
   }
 
   // ---------- URLs de imagens ----------
@@ -143,6 +171,28 @@ export interface ChampDetail extends DDragonChampion {
 /** Skin real do Data Dragon (cromas têm `parentSkin` e não têm arte própria). */
 export function isRealSkin(skin: ChampDetail['skins'][number]): boolean {
   return skin.parentSkin === undefined;
+}
+
+/** Amostra neutra quando o CDragon não traz hex para a croma. */
+const ChromaFallbackColors: string[] = ['#66666A'];
+
+/** Referência de uma croma para a UI (amostra de cor + nome). */
+export interface ChromaRef {
+  id: number;
+  /** Nome completo no payload, ex. "Mecha Aatrox (Obsidian)". */
+  name: string;
+  /** Par de hex do CDragon; base para o gradiente da amostra. */
+  colors: string[];
+  /** num da skin à qual a croma pertence (liga com `skins[].num`). */
+  skinNum: number;
+}
+
+interface CDragonChampion {
+  skins: {
+    num: number;
+    name: string;
+    chromas?: { id: number; name: string; colors?: string[] }[];
+  }[];
 }
 
 interface ChampionListResponse {

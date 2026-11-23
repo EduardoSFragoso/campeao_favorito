@@ -11,6 +11,8 @@ backend/.mvn/wrapper/*.jar.tmp
 # Segredos locais
 *.env
 .env*
+*.pem
+*.key
 backend/src/main/resources/application-local.yml
 
 # IDE / SO

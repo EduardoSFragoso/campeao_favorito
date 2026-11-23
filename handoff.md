@@ -55,12 +55,21 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 - **Login**: rate limit 10 tentativas/min por IP (IP real via `X-Forwarded-For` do nginx).
 - **Esquema do banco**: só por migração Flyway versionada. Nunca mexer em tabela na mão nem
   religar `ddl-auto` para algo diferente de `validate`.
+- **Role da aplicação no Neon**: produção roda com `campeao_app` (senha forte no env da VM), com
+  CRUD nas tabelas + `CREATE` apenas no schema `public` (o que o Flyway precisa para a próxima
+  migration). Nada de `neondb_owner` no runtime. Conexão pelo host `-pooler` com `sslmode=require`
+  (sem `channel_binding` — o JDBC não usa).
+- **Projeto Neon**: produção vive em UM projeto; o segundo (legado) foi esvaziado. Confirme sempre
+  que está no projeto certo antes de rodar qualquer `DROP`/`ALTER` — tabelas de outros apps podem
+  morar junto (já mordido: `DROP` de tabela de terceiro recuperado via point-in-time restore).
 - **Front chamando a API**: por HTTPS, origem servida em `config.json` gerado na CI
   (variável de repositório `API_URL`).
 
 ## Workflow de Git
 
-- Branch protegida: PR obrigatório, CI verde; merge **rebase** com squash da história.
+- Branch protegida por ruleset `main-protection` (enforcement ativo): PR obrigatório, os dois jobs
+  da CI como checks obrigatórios, linear history, força-push bloqueado, merge apenas
+  **Rebase and merge** (cada commit entra com hash próprio; squash desligado).
 - Mensagens: `tipo(escopo): assunto — detalhe` com assunto até ~70 caracteres.
 - Segredos nunca versionados: dev usa `backend/.env` (gitignored), produção usa o
   `EnvironmentFile=/etc/campeao-favorito.env` do systemd na VM (manutenção manual, permissão 600).
@@ -81,7 +90,11 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 
 ## Pendências / próximos passos
 
-- Ver `docs/auditoria-infra.md` para o estado da auditoria e verificações pendentes
-  (role do Neon com privilégios mínimos, hardening de SSH na VM, varredura com gitleaks).
+- **Auditoria de infra concluída em 2026-11-23** — `docs/auditoria-infra.md` com todas as seções
+  verificadas: Neon (role mínima + Flyway em produção), VM (portas, env 600, SSH só chave,
+  rpcbind desativado, Security List validada externamente), CORS (origem estranha 403 sem ACAO,
+  origem do Pages 200 com ACAO exata), Dependabot, CI com Postgres efêmero, ruleset de proteção.
+  Único opcional pendente: rodar `gitleaks git --redact` (varredura heurística do histórico
+  não achou segredos).
 - Com chave de produção pessoal da Riot, o elo ranqueado volta a ser exibido (o degrade
   já está pronto).

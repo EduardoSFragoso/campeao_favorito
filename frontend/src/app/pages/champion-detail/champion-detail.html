@@ -62,20 +62,62 @@
         <h2>Skins 🎭 ({{ realSkins().length }})</h2>
         <div class="skins">
           @for (skin of realSkins(); track skin.num) {
-            <button
-              class="skin"
-              [class.active]="activeSkin() === skin.num"
-              (click)="activeSkin.set(skin.num)"
-            >
-              <img [src]="dd.splash(c.id, skin.num)" [alt]="skin.name" loading="lazy" />
-              <span>{{ skin.name }}</span>
-            </button>
+            <div class="skin-card">
+              <button class="skin" [class.active]="activeSkin() === skin.num" (click)="openFromCard(skin)">
+                <img [src]="dd.splash(c.id, skin.num)" [alt]="skin.name" loading="lazy" />
+                <span>{{ skin.name }}</span>
+              </button>
+              @if (chromasOf(skin.num).length) {
+                <div class="chromas">
+                  @for (ch of chromasOf(skin.num); track ch.id) {
+                    <button
+                      class="chroma"
+                      [style.background]="chromaGradient(ch.colors)"
+                      [title]="ch.name"
+                      [attr.aria-label]="'Croma ' + ch.name"
+                      (click)="openFromChroma(ch)"
+                    ></button>
+                  }
+                </div>
+              }
+            </div>
           }
         </div>
       </section>
     </div>
 
     <a routerLink="/" class="back">← Voltar aos campeões</a>
+
+    @if (modalSkin(); as m) {
+      <div class="skin-modal">
+        <div class="card" role="dialog" aria-modal="true" [attr.aria-label]="m.skin.name">
+          <img [src]="dd.splash(c.id, m.skin.num)" [alt]="m.skin.name" />
+          <div class="card-info">
+            <strong>{{ m.skin.name }}</strong>
+            @if (selectedChromaLabel(); as label) {
+              <span class="chroma-name">Croma: {{ label }}</span>
+            }
+          </div>
+          @if (m.chromas.length) {
+            <div class="chromas">
+              @for (ch of m.chromas; track ch.id) {
+                <button
+                  class="chroma"
+                  [class.selected]="selectedChromaId() === ch.id"
+                  [style.background]="chromaGradient(ch.colors)"
+                  [title]="ch.name"
+                  [attr.aria-label]="'Croma ' + ch.name"
+                  (click)="selectChroma(ch)"
+                ></button>
+              }
+            </div>
+          }
+          <button class="close" (click)="closeSkin()" aria-label="Fechar">✕</button>
+          <button class="nav prev" (click)="stepSkin(-1)" aria-label="Skin anterior">←</button>
+          <button class="nav next" (click)="stepSkin(1)" aria-label="Próxima skin">→</button>
+        </div>
+      </div>
+    }
   </article>
 } @else {
   <p class="loading">Carregando campeão…</p>

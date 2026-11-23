@@ -59,4 +59,12 @@ class LoginRateLimiterTest {
         ex.getReason() != null && ex.getReason().matches(".*[0-9]+s\\."),
         "esperado 'Tente de novo em ~Ns', veio: " + ex.getReason());
   }
+
+  @Test
+  void logMascaraOIp() {
+    assertEquals("1.2.x.x", LoginRateLimiter.mask("1.2.3.4"));
+    assertEquals("2001:db8:1:…", LoginRateLimiter.mask("2001:db8:1:2:3:4:5:6"));
+    assertEquals("?", LoginRateLimiter.mask(null));
+    assertEquals("?", LoginRateLimiter.mask("  "));
+  }
 }

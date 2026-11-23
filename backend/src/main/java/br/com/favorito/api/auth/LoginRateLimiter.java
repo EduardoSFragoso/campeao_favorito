@@ -53,7 +53,8 @@ public class LoginRateLimiter {
             });
     if (w.count() > MAX_ATTEMPTS) {
       long retrySec = Math.max(1, (w.start() + WINDOW.toMillis() - now) / 1000);
-      log.warn("Rate limit de login atingido para IP {} ({} tentativas)", ip, w.count());
+      // LGPD: IP é dado pessoal — loga mascarado (chave real do map segue intacta)
+      log.warn("Rate limit de login atingido para IP {} ({} tentativas)", mask(ip), w.count());
       throw new ResponseStatusException(
           HttpStatus.TOO_MANY_REQUESTS,
           "Muitas tentativas de login. Tente de novo em ~" + retrySec + "s.");
@@ -61,5 +62,22 @@ public class LoginRateLimiter {
     if (hits.size() > CLEAN_UP_THRESHOLD) {
       hits.entrySet().removeIf(e -> now - e.getValue().start() >= WINDOW.toMillis());
     }
+  }
+
+  /**
+   * Mascara o IP para log (LGPD): IPv4 mantém os dois primeiros octetos ("1.2.x.x"); IPv6 e demais,
+   * os três primeiros blocos. A chave do mapa segue com o IP completo — o limite por IP continua
+   * preciso; só o log que não carrega o dado pessoal inteiro.
+   */
+  static String mask(String ip) {
+    if (ip == null || ip.isBlank()) {
+      return "?";
+    }
+    String[] parts = ip.split("\\.");
+    if (parts.length == 4) {
+      return parts[0] + "." + parts[1] + ".x.x";
+    }
+    String[] blocks = ip.split(":");
+    return blocks.length > 3 ? blocks[0] + ":" + blocks[1] + ":" + blocks[2] + ":…" : ip;
   }
 }

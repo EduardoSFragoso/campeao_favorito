@@ -79,9 +79,13 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 
 ## Workflow de Git
 
-- Branch protegida por ruleset `main-protection` (enforcement ativo): PR obrigatório, os dois jobs
-  da CI como checks obrigatórios, linear history, força-push bloqueado, merge apenas
-  **Rebase and merge** (cada commit entra com hash próprio; squash desligado).
+- Branch protegida pelo ruleset `protege-main` (enforcement ativo; espelho versionado em
+  `.github/rulesets/protege-main.json`): PR obrigatório, os dois jobs da CI como checks obrigatórios
+  com branch atualizada antes do merge (strict), conversas de review resolvidas, força-push e
+  deleção bloqueados, sem bypass (nem admin), **Required approvals = 0** (revisão de Codeowners não
+  bloqueia mantenedor único; o portão do merge é a CI), merge apenas **Rebase and merge** (só
+  método habilitado no repo, com Require linear history marcado).
+- Checklist administrativo do repositório: `docs/configuracao-repositorio.md`.
 - Mensagens: `tipo(escopo): assunto — detalhe` com assunto até ~70 caracteres.
 - Segredos nunca versionados: dev usa `backend/.env` (gitignored), produção usa o
   `EnvironmentFile=/etc/campeao-favorito.env` do systemd na VM (manutenção manual, permissão 600).

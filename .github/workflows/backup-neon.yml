@@ -1,0 +1,76 @@
+name: Backup do Neon
+
+# Dump diário do banco (pg_dump custom) criptografado com gpg simétrico.
+# O dump criptografado é publicado como artifact do run (retenção 30 dias).
+# NUNCA subir o dump cru: em repo público, artifacts são baixáveis por
+# qualquer pessoa — a criptografia é o que protege o conteúdo.
+#
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   NEON_DATABASE_URL — connection string DIRETA (sem -pooler) do Neon,
+#     com a role de backup; pg_dump não deve passar pelo PgBouncer.
+#   BACKUP_PASSPHRASE — passphrase forte; quem guarda a passphrase faz o
+#     backup valer de algo. Sem ela, o .gpg é lixo.
+#
+# O agendamento do GitHub não é pontual (pode atrasar em horário de pico) e
+# um schedule fica inativo após 60 dias de repo sem atividade — por isso o
+# workflow_dispatch (Run workflow) é o gatilho manual de teste.
+
+on:
+  schedule:
+    # fora do congestionamento do topo da hora (0–15) da fila do GitHub
+    - cron: "27 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-neon
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    name: pg_dump + gpg
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instala postgresql-client 17 (mesma versão do banco)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -s -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: pg_dump criptografado com gpg
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ] || [ -z "${BACKUP_PASSPHRASE:-}" ]; then
+              echo "::error::Secrets NEON_DATABASE_URL e/ou BACKUP_PASSPHRASE ausentes — cadastre antes de rodar."
+              exit 1
+          fi
+          pg_dump "$DATABASE_URL" --format=custom --file backup.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output backup.dump.gpg backup.dump
+          rm -f backup.dump
+
+      - name: Prova do roundtrip (sem o dump, o backup não serve)
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          gpg --batch --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --decrypt --output /dev/null backup.dump.gpg
+          echo "roundtrip gpg OK — o .gpg abre com a passphrase cadastrada"
+
+      - name: Publica artifact (só o .gpg)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-neon-${{ github.run_id }}
+          path: backup.dump.gpg
+          retention-days: 30
+          if-no-files-found: error

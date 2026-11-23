@@ -64,6 +64,11 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   morar junto (já mordido: `DROP` de tabela de terceiro recuperado via point-in-time restore).
 - **Front chamando a API**: por HTTPS, origem servida em `config.json` gerado na CI
   (variável de repositório `API_URL`).
+- **Maestria no grid**: `GET /api/riot/masteries` (JWT obrigatório) devolve a maestria COMPLETA
+  por campeão (`/champion-masteries/by-puuid/{puuid}`, sem `/top`), cacheada por conta com TTL
+  de 60s. O frontend guarda em sessionStorage o último invocador buscado
+  (`SummonerStore` → primeira página "campeões" abre com badges ⭐). Falha da maestria nunca
+  derruba o perfil — só some o badge. Todas as rotas `/api/riot/**` exigem JWT.
 - **Cromas (Community Dragon)**: o frontend busca
   `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/{key}.json`
   (key numérico do campeão; CDN estático, sem chave de API). Todas as cromas de uma skin

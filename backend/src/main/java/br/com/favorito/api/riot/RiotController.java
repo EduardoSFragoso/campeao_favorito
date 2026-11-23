@@ -51,6 +51,23 @@ public class RiotController {
     return service.rotation(platformOr(platform));
   }
 
+  @Operation(summary = "Maestria completa de conta: nível de cada campeão (para badge no grid)")
+  @GetMapping("/masteries")
+  public java.util.List<RiotDtos.MasteryDto> masteries(
+      @RequestParam
+          @NotBlank
+          @Pattern(
+              regexp = "[\\p{L}\\p{N} ._'\\-]{1,32}",
+              message = "2–32 caracteres: letras, números, espaço, . _ ' -")
+          String gameName,
+      @RequestParam
+          @NotBlank
+          @Pattern(regexp = "[\\p{L}\\p{N}]{2,5}", message = "2–5 letras ou números")
+          String tagLine,
+      @RequestParam(required = false) String platform) {
+    return service.masteries(gameName, tagLine, platformOr(platform));
+  }
+
   private String platformOr(String platform) {
     String p = (platform == null || platform.isBlank()) ? props.defaultPlatform() : platform;
     if (p == null || p.isBlank()) {

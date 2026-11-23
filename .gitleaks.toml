@@ -1,0 +1,14 @@
+# gitleaks (v8.25+): https://github.com/gitleaks/gitleaks
+[extend]
+useDefault = true # mantém TODAS as regras padrão
+
+# estende a regra padrão "generic-api-key" com uma allowlist cirúrgica:
+# só aquele arquivo, só aquele literal de teste
+[[rules]]
+id = "generic-api-key"
+    [[rules.allowlists]]
+    description = "JwtServiceTest: literal de teste (32+ bytes fake p/ HS256), não segredo"
+    condition = "AND"
+    regexTarget = "line"
+    regexes = ['''(1234567890abcdef|REDACTED)''']
+    paths = ['''JwtServiceTest\.java''']

@@ -216,7 +216,7 @@ Resultado da última auditoria completa (código + histórico + API do GitHub). 
 
 - `DATABASE_URL` só no EnvironmentFile da VM (permissão 600, fora do Git), com `sslmode=require`.
 - Migrações Flyway versionadas e testadas do zero na CI com Postgres efêmero.
-- Pendência: **backup** — desenho aprovado e adiado (Action agendada com `pg_dump` criptografado, ver conversa de 2026-11-23); até lá, `pg_dump` manual antes de qualquer migração.
+- **Backup ativo**: workflow `backup-neon.yml` (diário à 06:27 UTC + _Run workflow_ manual) faz `pg_dump --format=custom`, criptografa com gpg (AES256), prova o roundtrip da passphrase e publica só o `.gpg` como artifact, retenção de 30 dias. Secrets: `NEON_DATABASE_URL` (conexão **direta**, sem `-pooler`) e `BACKUP_PASSPHRASE` — de posse do dono, nunca no repo. Restauração: `gpg -d backup.dump.gpg > backup.dump && pg_restore --clean --if-exists --dbname "$DATABASE_URL" --table='<tabelas>' backup.dump` (o dump cobre o banco inteiro, inclusive tables de outros projetos que compartilham o banco).
 
 ### VM
 

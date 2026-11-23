@@ -20,7 +20,7 @@ backend/                 Spring Boot 4 (Java 25), systemd na VM Oracle
     application.yml      defaults dev; prod sobrepõe via application-prod.yml
     db/migration/        Flyway (V1+: FONTE DA VERDADE do esquema)
 docs/                    fase VM/TLS, chave de Riot pessoal, auditoria de infra
-.github/workflows/       ci.yml, deploy-gh-pages.yml, monitor.yml (.github/dependabot.yml)
+.github/workflows/       ci.yml, deploy-gh-pages.yml, monitor.yml, backup-neon.yml (.github/dependabot.yml)
 ```
 
 ## Comandos
@@ -89,6 +89,9 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 - Mensagens: `tipo(escopo): assunto — detalhe` com assunto até ~70 caracteres.
 - Segredos nunca versionados: dev usa `backend/.env` (gitignored), produção usa o
   `EnvironmentFile=/etc/campeao-favorito.env` do systemd na VM (manutenção manual, permissão 600).
+- Backup do Neon: `backup-neon.yml` roda diário (+ _Run workflow_ manual), publica artifact `.gpg`
+  (30 dias). Secrets `NEON_DATABASE_URL` (conexão direta, sem `-pooler`) e `BACKUP_PASSPHRASE` no
+  Actions — a passphrase só existe com o dono; sem ela o artifact é lixo.
 
 ## Armadilhas conhecidas (já morderam)
 

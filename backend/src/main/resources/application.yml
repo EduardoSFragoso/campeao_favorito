@@ -9,12 +9,15 @@ spring:
     hikari:
       maximum-pool-size: 4
   jpa:
+    # o esquema é governado pelo Flyway (db/migration); o Hibernate só valida
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    # produção já tem o esquema criado pelo ddl-auto anterior: baseline na v1 e as
+    # próximas migrações (V2+) é que rodam de verdade lá; banco novo roda a V1
+    baseline-on-migrate: true
+    baseline-version: 1
 
 server:
   port: ${PORT:8080}

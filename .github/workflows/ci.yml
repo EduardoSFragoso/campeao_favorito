@@ -12,6 +12,27 @@ jobs:
   backend:
     name: build backend (verify + spotless)
     runs-on: ubuntu-latest
+
+    # Postgres efêmero: o smoke test (ApiApplicationTests) sobe o contexto com
+    # Flyway migrando do zero — migrações testadas na CI, como no handoff
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: champion_favorito
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/champion_favorito
+
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6

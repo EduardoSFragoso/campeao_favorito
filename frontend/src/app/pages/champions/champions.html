@@ -13,37 +13,68 @@
     [value]="query()"
     (input)="onSearch($any($event.target).value)"
   />
+  <select class="sort" (change)="onOrdenacao($any($event.target).value)" aria-label="Ordenar campeões">
+    <option value="nome">Nome (A-Z)</option>
+    <option value="nomeDesc">Nome (Z-A)</option>
+    <option value="ataque">Ataque</option>
+    <option value="defesa">Defesa</option>
+    <option value="magia">Magia</option>
+    <option value="dificuldade">Dificuldade</option>
+  </select>
+  @if (classes().length) {
+    <div class="chips">
+      <button class="chip" [class.on]="classe() === null" (click)="classe.set(null)">Todas</button>
+      @for (tag of classes(); track tag) {
+        <button class="chip" [class.on]="classe() === tag" (click)="onClasse(tag)">
+          {{ classeLabel(tag) }}
+        </button>
+      }
+    </div>
+  }
 </div>
 
 @if (champions() === null) {
   <p class="loading">Carregando campeões do Data Dragon…</p>
 } @else if (champions() === 'error') {
   <p class="loading">Não foi possível carregar a lista de campeões (Data Dragon).</p>
-} @else if (!filtered()?.length) {
-  <p class="loading">Nenhum campeão encontrado para “{{ query() }}”.</p>
 } @else {
-  <div class="grid">
-    @for (c of filtered(); track c.id) {
-      <article class="card">
-        <a [routerLink]="['/champion', c.id]" class="card-link">
-          <img [src]="dd.loading(c.id)" [alt]="c.name" loading="lazy" />
-          <div class="overlay">
-            <h3>{{ c.name }}</h3>
-            <p>{{ c.title }}</p>
-          </div>
-          @if (isFreeToPlay(c)) {
-            <span class="badge free" title="Semana gratuitão hoje!">Grátis na semana</span>
-          }
-        </a>
-        <button
-          class="fav"
-          [class.on]="isFavorite(c)"
-          (click)="toggleFavorite(c)"
-          [title]="auth.isLoggedIn() ? 'Favoritar' : 'Faça login para favoritar'"
-        >
-          {{ isFavorite(c) ? '♥' : '♡' }}
-        </button>
-      </article>
-    }
-  </div>
+  @if (summonerStore.current(); as sm) {
+    <p class="mastery-source">
+      ⭐ maestria de <strong>{{ sm.gameName }}#{{ sm.tagLine }}</strong> —
+      <button type="button" class="mastery-clear" (click)="summonerStore.clear()">limpar</button>
+    </p>
+  }
+  @if (!filtered()?.length) {
+    <p class="loading">Nenhum campeão encontrado para “{{ query() }}”.</p>
+  } @else {
+    <div class="grid">
+      @for (c of filtered(); track c.id) {
+        <article class="card">
+          <a [routerLink]="['/champion', c.id]" class="card-link">
+            <img [src]="dd.loading(c.id)" [alt]="c.name" loading="lazy" />
+            <div class="overlay">
+              <h3>{{ c.name }}</h3>
+              <p>{{ c.title }}</p>
+            </div>
+            @if (isFreeToPlay(c)) {
+              <span class="badge free" title="Semana gratuitão hoje!">Grátis na semana</span>
+            }
+            @if (maestriaDe(c); as nivel) {
+              <span class="badge mastery" [title]="'Nível ' + nivel + ' de maestria'">
+                ⭐ nível {{ nivel }}
+              </span>
+            }
+          </a>
+          <button
+            class="fav"
+            [class.on]="isFavorite(c)"
+            (click)="toggleFavorite(c)"
+            [title]="auth.isLoggedIn() ? 'Favoritar' : 'Faça login para favoritar'"
+          >
+            {{ isFavorite(c) ? '♥' : '♡' }}
+          </button>
+        </article>
+      }
+    </div>
+  }
 }

@@ -153,6 +153,8 @@ export interface DDragonChampion {
   title: string;
   blurb: string;
   tags: string[];
+  /** Notas 0-10 do Data Dragon (presente no champion.json; opcional por defesa). */
+  info?: { attack: number; defense: number; magic: number; difficulty: number };
 }
 
 export interface ChampDetail extends DDragonChampion {

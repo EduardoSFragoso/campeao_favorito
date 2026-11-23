@@ -191,3 +191,34 @@ Confirme que cada teste novo **falha** no código antigo antes de confiar nele.
 ## O que o agente não deve fazer sem confirmação
 
 DROP, TRUNCATE, apagar volumes ou branches, alterar firewall ou Security List, reiniciar serviços, aplicar migração na produção, reescrever o histórico do Git ou fazer push forçado.
+
+## Estado da auditoria no `campeao_favorito` — 2026-11-23
+
+Resultado da última auditoria completa (código + histórico + API do GitHub). Reexecutar os comandos das seções acima após mudanças estruturais e atualizar esta seção.
+
+### GitHub Pages e repositório
+
+- Deploy publicado **só com o frontend**: os arquivos da raiz (`README.md`, `handoff.md`) e do backend (`application.yml`) voltam 404 no site; HTTPS reforçado.
+- Origem do Pages em _Settings_ mostra "branch `main` /" — a publicação real é pelo workflow `deploy-gh-pages.yml` (artefato). Pendente cosmético: trocar a origem para _GitHub Actions_.
+- Nenhum arquivo sensível versionado nem no histórico (só a migração Flyway, legítima). Gitleaks limpo em código e histórico (`gitleaks git --redact -v`); falso positivo do `JwtServiceTest` coberto pelo `.gitleaks.toml`.
+- Secret scanning e push protection **ativados**; Dependabot security updates **ativados** (além do `dependabot.yml` semanal).
+- `monitor.yml` (health check agendado) contém o endereço do backend — trade-off consciente de repo público; o IP real também aparece em logs de execução.
+
+### Backend (Spring Boot)
+
+- Actuator sem exposição ampla (só `/health`), `show-sql` desligado, sem `createStatement` nem SQL concatenado, Swagger desligado no perfil `prod`.
+- `permitAll` curto (`/api/auth/**`, `/api/health`, `/error`); CSRF off é ok (API JWT sem cookie).
+- CORS com allowlist via env (`CORS_ALLOWED_ORIGINS`), sem `*`; JWT com placeholder e fail-fast em produção; rate limit no login (`LoginRateLimiter`).
+- Placeholders em todos os `application*.yml` (`${DB_URL}`, `${JWT_SECRET}`...); nada de credencial versionada.
+- Pendência: logs sem dados pessoais revisados só pontualmente (sem varredura dedicada).
+
+### Neon
+
+- `DATABASE_URL` só no EnvironmentFile da VM (permissão 600, fora do Git), com `sslmode=require`.
+- Migrações Flyway versionadas e testadas do zero na CI com Postgres efêmero.
+- Pendência: **backup** — desenho aprovado e adiado (Action agendada com `pg_dump` criptografado, ver conversa de 2026-11-23); até lá, `pg_dump` manual antes de qualquer migração.
+
+### VM
+
+- sshd: `passwordauthentication no`; env da app com `600`; rpcbind desativado; saúde via `monitor.yml`.
+- Pendências de endurecimento (baixa prioridade): `ufw` não instalado (a Security List da Oracle faz o papel — conferir no console: só 80/443 públicas, SSH restrito); Java escuta em `*:8080` (a nuvem bloqueia de fora, mas vale mudar o bind para 127.0.0.1); deploy continua manual (sem chave dedicada em Environment).

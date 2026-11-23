@@ -13,7 +13,8 @@ import org.springframework.mock.env.MockEnvironment;
 /** Contrato do token: round-trip, expiração, token adulterado e o fail-fast do perfil prod. */
 class JwtServiceTest {
 
-  private static final String SECRET = "1234567890abcdef".repeat(4); // >= 32 bytes p/ HS256
+  private static final String SECRET =
+      "1234567890abcdef".repeat(4); // >= 32 bytes p/ HS256 — gitleaks:allow (literal de teste)
   private final User user = novoUsuario();
 
   private User novoUsuario() {

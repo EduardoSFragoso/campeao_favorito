@@ -15,6 +15,10 @@
 
 .toolbar {
   margin-bottom: 1.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
 
   input {
     width: min(420px, 100%);
@@ -26,6 +30,45 @@
 
     &:focus {
       outline: 1px solid var(--gold);
+    }
+  }
+
+  .sort {
+    padding: 0.55rem 0.8rem;
+    background: #0b1628;
+    border: 1px solid #22325a;
+    border-radius: 8px;
+    color: #e4e9f7;
+    cursor: pointer;
+
+    &:focus {
+      outline: 1px solid var(--gold);
+    }
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+
+    .chip {
+      background: #0b1628;
+      border: 1px solid #22325a;
+      border-radius: 999px;
+      color: #aeb8d8;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+
+      &:hover {
+        border-color: var(--gold);
+      }
+
+      &.on {
+        background: rgba(10, 200, 185, 0.15);
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
     }
   }
 }
@@ -104,6 +147,43 @@
     font-weight: 700;
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
+  }
+
+  .badge.mastery {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    background: rgba(4, 8, 16, 0.85);
+    color: var(--gold);
+    border: 1px solid rgba(218, 165, 32, 0.6);
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+  }
+
+  .mastery-source {
+    color: #aeb8d8;
+    font-size: 0.85rem;
+    margin: 0 0 0.8rem;
+
+    strong {
+      color: #e4e9f7;
+    }
+
+    .mastery-clear {
+      background: none;
+      border: none;
+      color: var(--cyan);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0;
+      text-decoration: underline;
+
+      &:hover {
+        color: var(--gold);
+      }
+    }
   }
 
   .fav {

@@ -1,12 +1,16 @@
 package br.com.favorito.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import br.com.favorito.api.auth.AuthDtos;
 import br.com.favorito.api.auth.AuthService;
+import br.com.favorito.api.auth.User;
 import br.com.favorito.api.auth.UserRepository;
+import br.com.favorito.api.common.Unicidade;
 import br.com.favorito.api.config.SegredoDeTeste;
+import br.com.favorito.api.favorites.Favorite;
 import br.com.favorito.api.favorites.FavoriteDtos;
 import br.com.favorito.api.favorites.FavoriteRepository;
 import br.com.favorito.api.favorites.FavoriteService;
@@ -22,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,7 +35,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * Rede de segurança da corrida em register e favorites.add DIRETO NA TABELA (check-then-insert não
  * resolve a corrida — é o UNIQUE de users.email e de favorites(user_id, champion_id) que protege).
  * Exige Postgres real, como o smoke test: roda na CI (job backend) e localmente só com DB_URL no
- * ambiente. Duas threads correm em paralelo; o invariante é 1 linha, nunca duplicata.
+ * ambiente. Duas threads correm em paralelo; o invariante é 1 linha, nunca duplicata. Os testes
+ * "colisaoDeterministica..." provocam o mesmo UNIQUE com INSERT direto, sem corrida, para provar o
+ * nome da constraint na exceção real.
  */
 @SpringBootTest(properties = "app.jwt.secret=" + SegredoDeTeste.JWT_SECRET)
 @EnabledIfEnvironmentVariable(named = "DB_URL", matches = ".+")
@@ -141,5 +148,68 @@ class CorridaBancoRealTest {
     } finally {
       SecurityContextHolder.clearContext();
     }
+  }
+
+  /**
+   * Colisão DETERMINÍSTICA (sem corrida): INSERT direto que viola o UNIQUE e captura a {@link
+   * DataIntegrityViolationException} real do Postgres/Hibernate. Complementa os testes concorrentes
+   * acima: prova que, na exceção REAL, a causa carrega o nome da constraint exata que o AuthService
+   * e o FavoriteService usam para decidir o 409.
+   */
+  @Test
+  void colisaoDeterministicaDeEmailExpoeUsersEmailKey() {
+    String email = "colisao-email@exemplo.dev";
+    limparUsuarios(List.of(email));
+    authService.register(new AuthDtos.RegisterRequest(email, "senha-forte-123", "Dup"));
+
+    User duplicado = new User();
+    duplicado.setEmail(email);
+    duplicado.setDisplayName("Dup");
+    duplicado.setPasswordHash("hash-qualquer");
+
+    DataIntegrityViolationException e =
+        assertThrows(
+            DataIntegrityViolationException.class,
+            () -> users.saveAndFlush(duplicado),
+            "o UNIQUE do e-mail precisa barrar o segundo INSERT");
+
+    assertTrue(
+        Unicidade.violada(e, "users_email_key"),
+        "a causa precisa expor a constraint users_email_key (nome padrão do UNIQUE no Postgres): "
+            + e);
+
+    limparUsuarios(List.of(email));
+  }
+
+  /** Mesma colisão determinística para o UNIQUE (user_id, champion_id) dos favoritos. */
+  @Test
+  void colisaoDeterministicaDeFavoritoExpoeUkUserChampion() {
+    String email = "colisao-favorito@exemplo.dev";
+    limparUsuarios(List.of(email));
+    authService.register(new AuthDtos.RegisterRequest(email, "senha-forte-123", "Dup"));
+    Long userId = users.findByEmailIgnoreCase(email).orElseThrow().getId();
+
+    Favorite primeiro = new Favorite();
+    primeiro.setUserId(userId);
+    primeiro.setChampionId("ahri");
+    primeiro.setChampionName("Ahri");
+    favorites.saveAndFlush(primeiro);
+
+    Favorite duplicado = new Favorite();
+    duplicado.setUserId(userId);
+    duplicado.setChampionId("ahri");
+    duplicado.setChampionName("Ahri");
+
+    DataIntegrityViolationException e =
+        assertThrows(
+            DataIntegrityViolationException.class,
+            () -> favorites.saveAndFlush(duplicado),
+            "o UNIQUE (user_id, champion_id) precisa barrar o segundo INSERT");
+
+    assertTrue(
+        Unicidade.violada(e, "uk_user_champion"),
+        "a causa precisa expor a constraint uk_user_champion: " + e);
+
+    limparUsuarios(List.of(email));
   }
 }

@@ -45,6 +45,14 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 
 - **Autorização**: tudo atrás de JWT exceto `/api/auth/**`, `/api/health`, `/error` e os endpoints
   do Swagger (desligados no perfil prod). Novas rotas nasce protegidas por padrão.
+- **Guard do JWT_SECRET** (`JwtService`): o placeholder do `application.yml` é **recusado em
+  qualquer perfil**, exceto quando o perfil `dev` ou `test` está ativo de forma explícita (aí
+  vale warning e segue, para sprint local). Segredo com < 32 bytes é recusado em **todos** os
+  perfis (o HS256 não é seguro — o próprio io.jsonwebtoken rejeitaria; a regra fecha antes com
+  mensagem acionável). Os dois `@SpringBootTest` de banco real (o smoke `ApiApplicationTests`
+  e o `CorridaBancoRealTest`) definem sua própria `app.jwt.secret` via `SegredoDeTeste` — sem
+  isso o boot deles falharia sem perfil. Testes de slice usam `@MockitoBean JwtService`, então
+  não passam pelo guard.
 - **Respostas de erro**: sempre `{"error": "..."}` do `GlobalExceptionHandler`. Exceções de
   negócio com `@ResponseStatus` **precisam** de handler específico no advice — o
   `@ExceptionHandler(Exception.class)` genérico captura antes e viraria 500 (já mordeu 401/409/429).

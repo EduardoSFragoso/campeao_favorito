@@ -15,8 +15,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * Corrida no register: entre o existsByEmailIgnoreCase() e o save() outra thread pode inserir o
  * mesmo e-mail. O código não resolve a corrida — é o UNIQUE de users.email do banco que garante 1
  * linha; quem perde toma a violação, convertida em {@link br.com.favorito.api.common.
- * DuplicateResourceException} (409 no HTTP) — antes da correção a violação escapava crua e virava
- * 500 no catch-all. Prova também que o token não é emitido para quem perdeu.
+ * DuplicateResourceException} (409 no HTTP) SÓ quando a restrição violada é o UNIQUE esperado
+ * (users_email_key, lido na causa); outra violação segue como erro de servidor. Prova também que o
+ * token não é emitido para quem perdeu.
  */
 class CorridaRegisterTest {
 
@@ -37,10 +38,10 @@ class CorridaRegisterTest {
     // de unicidade acontecer DENTRO do método, no escopo do catch)
     when(users.save(any(User.class)))
         .thenReturn(salvo) // 1ª thread vence a corrida
-        .thenThrow(new DataIntegrityViolationException("users_email_key")); // 2ª bate no UNIQUE
+        .thenThrow(br.com.favorito.api.support.ViolacaoDeBanco.em("users_email_key"));
     when(users.saveAndFlush(any(User.class)))
         .thenReturn(salvo)
-        .thenThrow(new DataIntegrityViolationException("users_email_key"));
+        .thenThrow(br.com.favorito.api.support.ViolacaoDeBanco.em("users_email_key"));
 
     var req = new AuthDtos.RegisterRequest("corrida@exemplo.dev", "senha-forte-123", "Ana");
 
@@ -51,5 +52,24 @@ class CorridaRegisterTest {
     verify(users, times(2)).saveAndFlush(any(User.class));
     // token só para quem venceu a corrida (1ª paginação do issue)
     verify(jwtService, times(1)).issue(any(User.class));
+  }
+
+  @Test
+  void violacaoDeOutraRestricaoSegueComoErroDeServidor() {
+    // FK de outra coisa (ou CHECK etc.): NÃO é duplicata — o 409 com "E-mail já cadastrado"
+    // esconderia um bug; a violação tem de escapar e virar 500 no catch-all
+    UserRepository users = mock(UserRepository.class);
+    PasswordEncoder encoder = mock(PasswordEncoder.class);
+    JwtService jwtService = mock(JwtService.class);
+    AuthService service = new AuthService(users, encoder, jwtService);
+
+    when(users.existsByEmailIgnoreCase("qualquer@exemplo.dev")).thenReturn(false);
+    when(encoder.encode(any())).thenReturn("hash");
+    when(users.saveAndFlush(any(User.class)))
+        .thenThrow(br.com.favorito.api.support.ViolacaoDeBanco.em("fk_nao_relacionada"));
+
+    var req = new AuthDtos.RegisterRequest("qualquer@exemplo.dev", "senha-forte-123", "Ana");
+
+    Assertions.assertThrows(DataIntegrityViolationException.class, () -> service.register(req));
   }
 }

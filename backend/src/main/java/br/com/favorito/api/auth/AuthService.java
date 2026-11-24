@@ -2,6 +2,7 @@ package br.com.favorito.api.auth;
 
 import br.com.favorito.api.common.DuplicateResourceException;
 import br.com.favorito.api.common.InvalidCredentialsException;
+import br.com.favorito.api.common.Unicidade;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,11 +27,16 @@ public class AuthService {
     user.setDisplayName(req.displayName().trim());
     user.setPasswordHash(passwordEncoder.encode(req.password()));
     // saveAndFlush para a violação de unicidade estourar aqui dentro — a corrida no
-    // exists(visto antes do INSERT) é decidida pelo UNIQUE do banco, e ela vira 409
+    // exists(visto antes do INSERT) é decidida pelo UNIQUE do banco. 409 SÓ para o
+    // UNIQUE do e-mail (users_email_key, lido na causa): outra violação (FK, CHECK, NOT NULL)
+    // escapa e vira 500 no catch-all — responder "E-mail já cadastrado" esconderia o bug.
     try {
       user = users.saveAndFlush(user);
     } catch (DataIntegrityViolationException e) {
-      throw new DuplicateResourceException("E-mail já cadastrado.");
+      if (Unicidade.violada(e, "users_email_key")) {
+        throw new DuplicateResourceException("E-mail já cadastrado.");
+      }
+      throw e;
     }
     return new AuthDtos.AuthResponse(jwtService.issue(user), AuthDtos.UserResponse.from(user));
   }

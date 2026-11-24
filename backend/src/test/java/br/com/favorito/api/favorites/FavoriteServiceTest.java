@@ -75,7 +75,7 @@ class FavoriteServiceTest {
     // exists passou, mas o INSERT bate no UNIQUE (corrida) — a violação vira 409, nunca 500
     when(repo.existsByUserIdAndChampionIdIgnoreCase(USER, "Ahri")).thenReturn(false);
     when(repo.saveAndFlush(any(Favorite.class)))
-        .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uk_user_champion"));
+        .thenThrow(br.com.favorito.api.support.ViolacaoDeBanco.em("uk_user_champion"));
 
     assertThrows(DuplicateResourceException.class, () -> service.add(req()));
   }

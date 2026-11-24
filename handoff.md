@@ -81,10 +81,12 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 
 - Branch protegida pelo ruleset `protege-main` (enforcement ativo; espelho versionado em
   `.github/rulesets/protege-main.json`): PR obrigatório, os dois jobs da CI como checks obrigatórios
-  com branch atualizada antes do merge (strict), conversas de review resolvidas, força-push e
-  deleção bloqueados, sem bypass (nem admin), **Required approvals = 0** (revisão de Codeowners não
-  bloqueia mantenedor único; o portão do merge é a CI), merge apenas **Rebase and merge** (só
-  método habilitado no repo, com Require linear history marcado).
+  com branch atualizada antes do merge (strict), conversas de review resolvidas, força-push,
+  deleção e merge commits bloqueados (`required_linear_history`), sem bypass (nem admin),
+  **Required approvals = 0** e revisão de Codeowners **não exigida** — o portão do merge é a CI
+  **mais a revisão manual do dono**; mudanças em `.github/workflows/` dependem dessa revisão
+  manual (escopo no `CODEOWNERS`). Merge apenas **Rebase and merge** (só método habilitado).
+  Anti-fake approval ligado (`require_extra_approval_for_unattributed_changes`).
 - Checklist administrativo do repositório: `docs/configuracao-repositorio.md`.
 - Mensagens: `tipo(escopo): assunto — detalhe` com assunto até ~70 caracteres.
 - Segredos nunca versionados: dev usa `backend/.env` (gitignored), produção usa o

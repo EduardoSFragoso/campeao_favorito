@@ -9,6 +9,7 @@ import br.com.favorito.api.auth.JwtService;
 import br.com.favorito.api.favorites.FavoriteController;
 import br.com.favorito.api.favorites.FavoriteService;
 import br.com.favorito.api.riot.RiotController;
+import br.com.favorito.api.riot.RiotRateLimiter;
 import br.com.favorito.api.riot.RiotService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,7 +31,12 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
  * é "bloqueada e sem chamada de service".
  */
 @WebMvcTest({FavoriteController.class, RiotController.class})
-@Import({SecurityConfig.class, JwtAuthFilter.class, TestPropertiesConfig.class})
+@Import({
+  SecurityConfig.class,
+  JwtAuthFilter.class,
+  TestPropertiesConfig.class,
+  RiotRateLimiter.class
+})
 @TestPropertySource(
     properties = {
       "app.cors.allowed-origins=http://localhost:4200",

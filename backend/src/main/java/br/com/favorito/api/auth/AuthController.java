@@ -13,10 +13,14 @@ public class AuthController {
 
   private final AuthService authService;
   private final LoginRateLimiter loginLimiter;
+  private final RegisterRateLimiter registerLimiter;
 
   @PostMapping("/register")
   @ResponseStatus(HttpStatus.CREATED)
-  public AuthDtos.AuthResponse register(@Valid @RequestBody AuthDtos.RegisterRequest req) {
+  public AuthDtos.AuthResponse register(
+      @Valid @RequestBody AuthDtos.RegisterRequest req, HttpServletRequest http) {
+    // prod: IP real via X-Forwarded-For (nginx) graças ao forward-headers-strategy
+    registerLimiter.check(http.getRemoteAddr());
     return authService.register(req);
   }
 

@@ -54,10 +54,35 @@ Cert emitido e renovado com acme.sh instalado **para o root**:
 
 ### nginx
 
-Vhost `/etc/nginx/sites-available/campeao-favorito`:
+Vhost ativo: `/etc/nginx/sites-enabled/campeao-favorito` — **cópia**, não link para
+`sites-available`: qualquer edição precisa ser feita no arquivo de `sites-enabled`.
+
+`location /` (o que o vhost aplica atrás do proxy):
+
+```nginx
+proxy_pass http://127.0.0.1:8080;
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $remote_addr;
+proxy_set_header Forwarded "";
+proxy_set_header X-Forwarded-Proto $scheme;
+```
+
 - `listen 443 ssl` com os cert acima;
-- `proxy_pass http://127.0.0.1:8080;`
 - A porta 80 continua servida pelo `default site` (irrelevante: a OCI bloqueia).
+
+**Por que sobrescrever o `X-Forwarded-For` e zerar o `Forwarded`:** com
+`server.forward-headers-strategy: framework` o `ForwardedHeaderFilter` do Spring confia no
+**primeiro IP** do `X-Forwarded-For` **e** no header `Forwarded` (comprovado pelos testes do
+PR #58 — ele não valida contra uma lista de proxies confiáveis). Repassando o header do
+cliente, qualquer um burlava o rate limit do login forjando IPs. Sobrescrevendo com
+`$remote_addr`, o backend só enxerga o IP real que chegou no nginx — o que só é seguro
+**enquanto o nginx for o único proxy na frente da API**; se um dia entrar CDN ou outro
+proxy, revisar (o primeiro IP da cadeia volta a ser forjável).
+
+**Pegadinha:** o `/etc/nginx/proxy_params` ainda tem `proxy_set_header X-Forwarded-For
+$proxy_add_x_forwarded_for;` (concatena, não sobrescreve) — mas este vhost **não o inclui**;
+não adicionar a linhas `include` lá por cima sem entender o efeito.
 
 A **raiz `/` ficou como está** (403/Whitelabel do Spring) — decisão do dono do
 projeto; o front vive no GitHub Pages e só consome `/api/*`.

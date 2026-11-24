@@ -68,7 +68,7 @@ jobs:
           echo "roundtrip gpg OK — o .gpg abre com a passphrase cadastrada"
 
       - name: Publica artifact (só o .gpg)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backup-neon-${{ github.run_id }}
           path: backup.dump.gpg

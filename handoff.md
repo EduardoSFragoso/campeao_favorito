@@ -52,7 +52,15 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   responde 403 com chave dev/pessoal — favoritos/perfil degradam sem elo, não podem falhar.
 - **gameName/tagLine**: validados com regex unicode-safe antes de virar parâmetro de rota da Riot
   (`platform` tem whitelist — entra na construção do host, risco de SSRF).
-- **Login**: rate limit 10 tentativas/min por IP (IP real via `X-Forwarded-For` do nginx).
+- **Login**: rate limit 10 tentativas/min por IP. O "IP real" existe porque o nginx
+  **sobrescreve** `X-Forwarded-For` com `$remote_addr` e **zera** o header `Forwarded` — o
+  `ForwardedHeaderFilter` do Spring (`strategy: framework`) confia no primeiro IP desses
+  headers (comprovado pelos testes do PR #58); antes da correção os headers iam do cliente
+  e o limite era burlável. Só é seguro enquanto o nginx for o **único** proxy na frente da
+  API: com CDN ou outro proxy, revisar o vhost e a strategy. O vhost ativo é a **cópia**
+  em `/etc/nginx/sites-enabled/` (não é link para `sites-available`); o
+  `/etc/nginx/proxy_params` tem `$proxy_add_x_forwarded_for`, mas não é incluído por este
+  vhost.
 - **Esquema do banco**: só por migração Flyway versionada. Nunca mexer em tabela na mão nem
   religar `ddl-auto` para algo diferente de `validate`.
 - **Roles no Neon**: produção tem duas roles — `campeao_app` (senha forte no env da VM), **dona

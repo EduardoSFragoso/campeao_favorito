@@ -35,9 +35,22 @@ jobs:
     steps:
       - name: Instala postgresql-client 17 (mesma versão do banco)
         run: |
+          set -euo pipefail
+          # O cliente 16 pré-instalado no ubuntu-latest NÃO serve: pg_dump recusa servidor
+          # mais novo ("server version mismatch") — o Neon roda 17. Por isso o apt externo.
+          # A chave do repositório pgdg é fixada por FINGERPRINT antes de assinar o apt:
+          # um repositório trocado/injectado não aprove.
           sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -s -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
-            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
+          esperada="B97B0AFCAA1A47F04F2A6A119ECB2B0DACCC4CF8"
+          obtida=$(gpg --show-keys --with-colons /tmp/pgdg.asc \
+            | awk -F: '/^fpr:/{print $10; exit}')
+          echo "fingerprint da chave pgdg: $obtida"
+          if [ "$obtida" != "$esperada" ]; then
+            echo "::error::Fingerprint da chave do repositório pgdg inesperada — abortando."
+            exit 1
+          fi
+          sudo cp /tmp/pgdg.asc /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
           . /etc/os-release
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list
@@ -55,6 +68,17 @@ jobs:
               exit 1
           fi
           pg_dump "$DATABASE_URL" --format=custom --file backup.dump
+          # Valida o dump ANTES de criptografar: um dump truncado pode gerar um .gpg que
+          # "abre" (o roundtrip gpg abaixo testaria só a passphrase), então a prova real
+          # é o TOC — o banco tem 3 tabelas (users, favorites, flyway_schema_history).
+          pg_restore --list backup.dump > toc.txt
+          tabelas=$(grep -c "TABLE DATA" toc.txt || true)
+          if [ "${tabelas:-0}" -lt 3 ]; then
+            echo "::error::Dump tem ${tabelas:-0} entradas TABLE DATA (mínimo esperado: 3) — possivelmente truncado/corrompido. Abortando."
+            head -40 toc.txt
+            exit 1
+          fi
+          echo "TOC OK: ${tabelas} tabelas com dados"
           gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
             --symmetric --cipher-algo AES256 --output backup.dump.gpg backup.dump
           rm -f backup.dump
@@ -68,7 +92,8 @@ jobs:
           echo "roundtrip gpg OK — o .gpg abre com a passphrase cadastrada"
 
       - name: Publica artifact (só o .gpg)
-        uses: actions/upload-artifact@v7
+        # fixado por SHA do commit (tag v7)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: backup-neon-${{ github.run_id }}
           path: backup.dump.gpg

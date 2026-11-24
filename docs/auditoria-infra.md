@@ -49,7 +49,9 @@ No console do Neon, confira:
 Regras:
 
 - `DATABASE_URL` só no servidor, com `sslmode=require`.
-- A aplicação usa uma **role com privilégios mínimos**, nunca a dona do banco (`neondb_owner`). As migrações usam outra role.
+- Estado real confirmado (2026-11-24): **duas roles** no Neon — `campeao_app`, dona das tabelas
+  do projeto (CRUD + `CREATE` no schema `public`), usada pelo Flyway e pela aplicação; e
+  `campeao_backup`, **só leitura**, usada pelo backup. Nunca a `neondb_owner` no runtime.
 - Migrações versionadas (Flyway ou Liquibase em Java, Alembic em Python, Prisma Migrate ou node-pg-migrate em Node), testadas do zero na CI com um Postgres de serviço e aplicadas primeiro numa **branch do Neon** criada a partir da produção.
 
 Em Java, a URL JDBC leva `sslmode=require` (`jdbc:postgresql://HOST/BANCO?sslmode=require`). Confira na documentação do Neon as recomendações do driver ao usar o pooler.
@@ -216,7 +218,7 @@ Resultado da última auditoria completa (código + histórico + API do GitHub). 
 
 - `DATABASE_URL` só no EnvironmentFile da VM (permissão 600, fora do Git), com `sslmode=require`.
 - Migrações Flyway versionadas e testadas do zero na CI com Postgres efêmero.
-- **Backup ativo**: workflow `backup-neon.yml` (diário à 06:27 UTC + _Run workflow_ manual) faz `pg_dump --format=custom`, criptografa com gpg (AES256), prova o roundtrip da passphrase e publica só o `.gpg` como artifact, retenção de 30 dias. Secrets: `NEON_DATABASE_URL` (conexão **direta**, sem `-pooler`) e `BACKUP_PASSPHRASE` — de posse do dono, nunca no repo. Restauração: `gpg -d backup.dump.gpg > backup.dump && pg_restore --clean --if-exists --dbname "$DATABASE_URL" --table='<tabelas>' backup.dump` (o dump cobre o banco inteiro, inclusive tables de outros projetos que compartilham o banco).
+- **Backup ativo**: workflow `backup-neon.yml` (diário à 06:27 UTC + _Run workflow_ manual), rodando com a role **`campeao_backup`** (só leitura), faz `pg_dump --format=custom`, criptografa com gpg (AES256), prova o roundtrip da passphrase e publica só o `.gpg` como artifact, retenção de 30 dias. Secrets: `NEON_DATABASE_URL` (conexão **direta**, sem `-pooler`) e `BACKUP_PASSPHRASE` — de posse do dono, nunca no repo. Restauração: `gpg -d backup.dump.gpg > backup.dump && pg_restore --clean --if-exists --dbname "$DATABASE_URL" --table='<tabelas>' backup.dump` (o dump cobre o banco inteiro: `users`, `favorites` e `flyway_schema_history` — não há outras tabelas). **Homologação (2026-11-24):** o `.gpg` foi restaurado e validado num Postgres descartável.
 
 ### VM
 
@@ -225,3 +227,4 @@ Resultado da última auditoria completa (código + histórico + API do GitHub). 
 - **Security List conferida (2026-11-23):** ingress só 22 e 443 em `0.0.0.0/0` (+ ICMP 3/3,4 de infraestrutura); 80 não exposto e não precisa — a renovação do cert usa **TLS-ALPN-01 na 443**. SSH restrito por chave (`passwordauthentication no`).
 - Pendência de endurecimento (baixa prioridade): deploy continua manual (sem chave dedicada em GitHub Environment).
 - Pendências fechadas nesta data: backup do Neon ativo (`backup-neon.yml`) e homologado com restauro do `.gpg`; bind do 8080 aplicado na VM (`127.0.0.1`, novo PID confirmado); dependência do CodeQL via **Default setup** (Java + TS); assinatura de commits descartada por decisão do dono.
+- Estado confirmado na VM (2026-11-24): sem endereço **IPv6 global** (só IPv4 na Security List) e **nenhum contêiner Docker** em execução.

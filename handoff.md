@@ -55,13 +55,15 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 - **Login**: rate limit 10 tentativas/min por IP (IP real via `X-Forwarded-For` do nginx).
 - **Esquema do banco**: só por migração Flyway versionada. Nunca mexer em tabela na mão nem
   religar `ddl-auto` para algo diferente de `validate`.
-- **Role da aplicação no Neon**: produção roda com `campeao_app` (senha forte no env da VM), com
-  CRUD nas tabelas + `CREATE` apenas no schema `public` (o que o Flyway precisa para a próxima
-  migration). Nada de `neondb_owner` no runtime. Conexão pelo host `-pooler` com `sslmode=require`
-  (sem `channel_binding` — o JDBC não usa).
-- **Projeto Neon**: produção vive em UM projeto; o segundo (legado) foi esvaziado. Confirme sempre
-  que está no projeto certo antes de rodar qualquer `DROP`/`ALTER` — tabelas de outros apps podem
-  morar junto (já mordido: `DROP` de tabela de terceiro recuperado via point-in-time restore).
+- **Roles no Neon**: produção tem duas roles — `campeao_app` (senha forte no env da VM), **dona
+  das tabelas** (CRUD + `CREATE` apenas no schema `public`, o que o Flyway precisa para a próxima
+  migration), usada pelo Flyway e pela aplicação; e `campeao_backup`, **só leitura**, usada pelo
+  backup (`backup-neon.yml`). Nada de `neondb_owner` no runtime. Conexão pelo host `-pooler` com
+  `sslmode=require` (sem `channel_binding` — o JDBC não usa).
+- **Projeto Neon**: produção vive em UM projeto; o segundo (legado) foi esvaziado. O banco só
+  tem `users`, `favorites` e `flyway_schema_history` (confirmado em 2026-11-24). Confirme sempre
+  que está no projeto certo antes de rodar qualquer `DROP`/`ALTER` (lição antiga: um `DROP` de
+  tabela de terceiro só foi recuperado via point-in-time restore).
 - **Front chamando a API**: por HTTPS, origem servida em `config.json` gerado na CI
   (variável de repositório `API_URL`).
 - **Maestria no grid**: `GET /api/riot/masteries` (JWT obrigatório) devolve a maestria COMPLETA
@@ -117,5 +119,9 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   origem do Pages 200 com ACAO exata), Dependabot, CI com Postgres efêmero, ruleset de proteção.
   `gitleaks git --redact` rodado localmente após o falso positivo do `JwtServiceTest`:
   **no leaks found** (allowlist cirúrgica em `.gitleaks.toml`).
+- **Estado de infra confirmado (2026-11-24)**: Neon com duas roles — `campeao_app` (dona das
+  tabelas, usada pelo Flyway e pela aplicação) e `campeao_backup` (só leitura, usada pelo backup);
+  backup do Neon restaurado e validado em Postgres descartável; VM sem endereço IPv6 global e
+  sem nenhum contêiner Docker em execução.
 - Com chave de produção pessoal da Riot, o elo ranqueado volta a ser exibido (o degrade
   já está pronto).

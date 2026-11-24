@@ -9,7 +9,7 @@ da **Riot Games API** — elo ranqueado, nível e top maestria.
 ```
 ┌─────────────────────┐        ┌──────────────────────────┐        ┌───────────────┐
 │  GitHub Pages       │  HTTP  │  Spring Boot (backend/)  │  JDBC  │  Neon         │
-│  Angular 21 (SPA)   │ ─────▶ │  Java 25 · JWT · Swagger │ ─────▶ │  Postgres     │
+│  Angular 22 (SPA)   │ ─────▶ │  Java 25 · JWT · Swagger │ ─────▶ │  Postgres     │
 └─────────┬───────────┘        └────────────┬─────────────┘        └───────────────┘
           │   splasharts/lore   (CDN direta, sem chave)
           ▼
@@ -18,7 +18,7 @@ da **Riot Games API** — elo ranqueado, nível e top maestria.
 
 | Camada | Tecnologia | Onde roda |
 |---|---|---|
-| Frontend | Angular 21 (signals, standalone) | GitHub Pages (estático) |
+| Frontend | Angular 22 (signals, standalone) | GitHub Pages (estático) |
 | Backend | Spring Boot 4.2 · Java 25 · Lombok · springdoc OpenAPI | **VM Oracle Cloud Free Tier** (produção, HTTPS) + local (8080) em dev |
 | Banco | PostgreSQL 17 serverless | Neon (free tier) |
 | Dados de jogo | Data Dragon (sem chave) + Riot API (com chave) | CDN / externo |
@@ -142,7 +142,7 @@ código: `RiotClient` aceita rotas de servidor e rotas regionais; estenda em `Ri
 com cache TTL por endpoint; Lombok (`@Getter/@Setter/@RequiredArgsConstructor`); DevTools para
 reload quente; springdoc 3.x (Swagger UI + esquema Bearer no Authorize).
 
-**Frontend:** Angular 21 com signals (`toSignal`), standalone components, novo `@for/@if`,
+**Frontend:** Angular 22 com signals (`toSignal`), standalone components, novo `@for/@if`,
 `provideAppInitializer` para `config.json` (mesmo binário dev/prod), interceptor JWT e
 `withHashLocation()` para funcionar no GitHub Pages sem rewrite.
 

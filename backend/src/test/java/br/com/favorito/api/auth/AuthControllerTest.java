@@ -43,6 +43,7 @@ class AuthControllerTest {
   @MockitoBean AuthService authService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
   @MockitoBean LoginRateLimiter loginLimiter;
+  @MockitoBean RegisterRateLimiter registerLimiter;
 
   @Test
   void registerValidoRetorna201ComToken() throws Exception {

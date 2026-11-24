@@ -61,6 +61,13 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   em `/etc/nginx/sites-enabled/` (não é link para `sites-available`); o
   `/etc/nginx/proxy_params` tem `$proxy_add_x_forwarded_for`, mas não é incluído por este
   vhost.
+- **Rate limits (janela fixa por chave, em memória — motor único `RateLimiterDeJanela`)**:
+  login 10/min por IP; register 5/min por IP; `/api/riot/**` 30/min POR USUÁRIO (id do token).
+  Teto de chaves nos mapas (10.000: vencidas saem primeiro, depois as mais antigas). Nuances:
+  o IP real vale o aviso do item acima (nginx único proxy); os limites de login/register
+  SECUEM a corrente do IP — se a strategy de forwarded headers mudar, os três viram um
+  contador só do loopback; o da Riot depende do `Authentication.getName()` — filtros que
+  troquem o principal mudam a chave.
 - **Esquema do banco**: só por migração Flyway versionada. Nunca mexer em tabela na mão nem
   religar `ddl-auto` para algo diferente de `validate`.
 - **Roles no Neon**: produção tem duas roles — `campeao_app` (senha forte no env da VM), **dona

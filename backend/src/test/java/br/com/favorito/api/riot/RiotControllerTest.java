@@ -40,6 +40,7 @@ class RiotControllerTest {
 
   @MockitoBean RiotService riotService;
   @MockitoBean br.com.favorito.api.auth.JwtService jwtService; // dependência do filtro real
+  @MockitoBean RiotRateLimiter rateLimiter;
 
   private SummonerProfile perfil() {
     return new SummonerProfile(

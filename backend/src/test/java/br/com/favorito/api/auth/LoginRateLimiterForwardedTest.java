@@ -34,6 +34,7 @@ import org.springframework.web.filter.ForwardedHeaderFilter;
   JwtAuthFilter.class,
   TestPropertiesConfig.class,
   LoginRateLimiter.class,
+  RegisterRateLimiter.class,
   LoginRateLimiterForwardedTest.FiltroDeProducao.class
 })
 @TestPropertySource(

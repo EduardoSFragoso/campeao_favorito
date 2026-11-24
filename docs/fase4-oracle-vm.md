@@ -11,7 +11,7 @@ status HTTP), nunca segredos.
 
 | Camada | Onde | Detalhe |
 |---|---|---|
-| Front (Angular 21) | GitHub Pages | `https://eduardosfragoso.github.io/campeao_favorito/` — deploy automático no merge em `main` |
+| Front (Angular 22) | GitHub Pages | `https://eduardosfragoso.github.io/campeao_favorito/` — deploy automático no merge em `main` |
 | API URL do front | Variável do repo `API_URL` | `frontend/public/config.json` é **reescrito no build** do deploy — trocar backend = PATCH da variável + 1 dispatch, sem PR |
 | Backend (Spring Boot 4.2 / Java 25) | VM Oracle (E2.1.Micro, Ubuntu) | `https://147-15-57-6.sslip.io` — nginx 443 → proxy → `127.0.0.1:8080` |
 | Banco | Neon Postgres (nuvem) | não roda nada de banco na VM |

@@ -23,7 +23,7 @@ Não abra issue pública com detalhes de vulnerabilidade.
 | XSS | Angular sanitiza por padrão; não usamos `bypassSecurityTrust*` |
 | CORS | allowlist explícita (env `CORS_ALLOWED_ORIGINS`), nunca `*` com credenciais |
 | Segredos em runtime | placeholder detectado → log WARN e bloqueio de uso real em produção |
-| Dependências do CI | vetor de supply-chain minimizado (actions com `@v4+` fixado) |
+| Dependências do CI | vetor de supply-chain minimizado (actions fixadas em tag maior — `checkout@v7`, `setup-java@v6`, `setup-node@v7` etc. — e checadas pelo Dependabot mensal) |
 
 ## Checklist de review
 

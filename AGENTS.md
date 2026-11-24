@@ -79,7 +79,6 @@
 
 - O agente não altera configurações do repositório (rulesets, proteção de branch, segredos, permissões de Actions, Pages) nem contorna as proteções existentes (bypass, push forçado, desativar checks). Se uma configuração atrapalhar, explique o problema e proponha a mudança para a pessoa aplicar.
 - Siga o template de PR (`.github/pull_request_template.md`), se existir. Todo PR descreve o que mudou e por quê, como foi testado e quais os riscos; prefira PRs pequenos e focados em um assunto.
-- Siga a política de assinatura e de autoria de commits descrita no `handoff.md` e não a desative.
 - Antes de cada commit, confira `git status` e `git diff --staged`: nada de segredos, `.env`, dumps, binários ou artefatos de build (`target/`, `build/`, `node_modules/`, `dist/`). Mantenha o `.gitignore` em dia.
 - Se um segredo for commitado, trate-o como vazado: rotacione a credencial primeiro. Reescrever o histórico é opcional e vem depois.
 - Checklist de configuração para quem administra o repositório: `docs/configuracao-repositorio.md`.

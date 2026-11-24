@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,8 @@ import org.springframework.stereotype.Service;
 /**
  * Agrega Account-V1 + Summoner-V4 + League-V4 + Champion Mastery-V4. Cache simples em memória com
  * TTL — a Riot cobra rate limit caro (dev key: 20 req/s e 100 req/2min) e o perfil não muda por
- * segundo.
+ * segundo. Cache e locks têm teto ({@link #MAX_ENTRADAS}): chaves não eventualmente expiradas são
+ * descartadas da mais antiga para a mais nova (ordem de inserção via sequência).
  */
 @Service
 @RequiredArgsConstructor
@@ -26,11 +28,20 @@ public class RiotService {
   private static final long PROFILE_TTL_MS = 60_000;
   private static final long ROTATION_TTL_MS = 5 * 60_000;
 
-  private record Cached<T>(T value, long expiresAt) {}
+  /** Teto de cache e de locks — além disso, sai o mais antigo (são mapas em memória, sem dump). */
+  static final int MAX_ENTRADAS = 1000;
+
+  private record Cached<T>(T value, long expiresAt, long sequencia) {}
+
+  private record Cadeado(ReentrantLock lock, long sequencia) {}
 
   private final RiotClient client;
   private final Map<String, Cached<Object>> cache = new ConcurrentHashMap<>();
-  private final Map<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+  private final Map<String, Cadeado> locks = new ConcurrentHashMap<>();
+
+  /** Ordem de inserção de cache/locks — a fila dos evictados quando o teto estoura. */
+  private final AtomicLong sequencia = new AtomicLong();
+
   private final AtomicReference<Cached<RiotDtos.ChampionRotation>> rotationCache =
       new AtomicReference<>();
 
@@ -41,7 +52,7 @@ public class RiotService {
       return (T) hit.value();
     }
     // lock por chave para não furar o rate limit com buscas repetidas
-    ReentrantLock lock = locks.computeIfAbsent(key, k -> new ReentrantLock());
+    ReentrantLock lock = cadeadoPara(key).lock();
     lock.lock();
     try {
       hit = cache.get(key);
@@ -49,17 +60,92 @@ public class RiotService {
         return (T) hit.value();
       }
       T value = loader.get();
-      cache.put(key, new Cached<>(value, System.currentTimeMillis() + PROFILE_TTL_MS));
+      guardarNoCache(key, value);
       return value;
     } finally {
       lock.unlock();
     }
   }
 
+  private void guardarNoCache(String key, Object value) {
+    cache.put(
+        key,
+        new Cached<>(
+            value, System.currentTimeMillis() + PROFILE_TTL_MS, sequencia.incrementAndGet()));
+    if (cache.size() <= MAX_ENTRADAS) {
+      return;
+    }
+    // estourou o teto: primeiro vai embora o que já expirou mesmo; o que faltar, sai o mais antigo
+    long agora = System.currentTimeMillis();
+    cache.values().removeIf(c -> c.expiresAt() <= agora);
+    while (cache.size() > MAX_ENTRADAS) {
+      String maisAntiga = null;
+      long menor = Long.MAX_VALUE;
+      for (var e : cache.entrySet()) {
+        if (e.getValue().sequencia() < menor) {
+          menor = e.getValue().sequencia();
+          maisAntiga = e.getKey();
+        }
+      }
+      cache.remove(maisAntiga);
+    }
+  }
+
+  private Cadeado cadeadoPara(String key) {
+    Cadeado atual =
+        locks.computeIfAbsent(
+            key, k -> new Cadeado(new ReentrantLock(), sequencia.incrementAndGet()));
+    if (locks.size() > MAX_ENTRADAS) {
+      // Enxuga o mais antigo. No pior caso (duas threads na mesma chave com o objeto novo e o
+      // evictado) perde-se a exclusão mútua daquela chave por uma rodada — a consequência é só um
+      // request extra ao upstream, nunca dado errado.
+      String maisAntiga = null;
+      long menor = Long.MAX_VALUE;
+      for (var e : locks.entrySet()) {
+        if (e.getValue().sequencia() < menor) {
+          menor = e.getValue().sequencia();
+          maisAntiga = e.getKey();
+        }
+      }
+      locks.remove(maisAntiga);
+    }
+    return atual;
+  }
+
+  /**
+   * Mesmas regras dos {@code @Pattern} do controller — mas aqui dentro, e ANTES de qualquer uso de
+   * cache/locks: o valor vai para a chave dos dois, e a platform para a URL da Riot.Uma entrada
+   * inválida não pode abrir lock nem deixar resíduo nos mapas.
+   */
+  private static String exigirTextoValido(String valor, String mensagem) {
+    String v = valor == null ? "" : valor.trim();
+    if (v.isBlank() || !v.matches("[\\p{L}\\p{N} ._'\\-]{1,32}")) {
+      throw new IllegalArgumentException(mensagem);
+    }
+    return v;
+  }
+
+  private static String exigirTagValida(String tagLine) {
+    String t = tagLine == null ? "" : tagLine.trim();
+    if (t.isBlank() || !t.matches("[\\p{L}\\p{N}]{2,5}")) {
+      throw new IllegalArgumentException("tagLine inválida: 2–5 letras ou números.");
+    }
+    return t;
+  }
+
+  private static void exigirPlataformaValida(String platform) {
+    String p = (platform == null || platform.isBlank()) ? "br1" : platform.trim().toLowerCase();
+    if (!RiotClient.platforms().contains(p)) {
+      throw new IllegalArgumentException("Plataforma inválida: " + p);
+    }
+  }
+
   public RiotDtos.SummonerProfile summonerProfile(
       String gameName, String tagLine, String platform) {
-    String gn = gameName.trim();
-    String tl = tagLine.trim();
+    String gn =
+        exigirTextoValido(gameName, "gameName: 2–32 caracteres: letras, números, espaço, . _ ' -");
+    String tl = exigirTagValida(tagLine);
+    exigirPlataformaValida(platform);
     String key = gn.toUpperCase() + "#" + tl.toUpperCase();
 
     return withCache(
@@ -176,8 +262,10 @@ public class RiotService {
    * — o payload só muda após partidas jogadas.
    */
   public List<RiotDtos.MasteryDto> masteries(String gameName, String tagLine, String platform) {
-    String gn = gameName.trim();
-    String tl = tagLine.trim();
+    String gn =
+        exigirTextoValido(gameName, "gameName: 2–32 caracteres: letras, números, espaço, . _ ' -");
+    String tl = exigirTagValida(tagLine);
+    exigirPlataformaValida(platform);
     String key = gn.toUpperCase() + "#" + tl.toUpperCase();
 
     return withCache(
@@ -219,6 +307,7 @@ public class RiotService {
   }
 
   public RiotDtos.ChampionRotation rotation(String platform) {
+    exigirPlataformaValida(platform);
     Cached<RiotDtos.ChampionRotation> hit = rotationCache.get();
     if (hit != null && hit.expiresAt() > System.currentTimeMillis()) {
       return hit.value();
@@ -229,7 +318,9 @@ public class RiotService {
     if (rotation == null) {
       throw new RiotApiException(404, "Rotação indisponível.");
     }
-    rotationCache.set(new Cached<>(rotation, System.currentTimeMillis() + ROTATION_TTL_MS));
+    rotationCache.set(
+        new Cached<>(
+            rotation, System.currentTimeMillis() + ROTATION_TTL_MS, sequencia.incrementAndGet()));
     return rotation;
   }
 }

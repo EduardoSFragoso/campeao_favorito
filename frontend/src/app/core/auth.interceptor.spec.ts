@@ -83,6 +83,24 @@ describe('authInterceptor — Bearer anexado só quando a URL está na base da A
     req.flush({});
   });
 
+  it('não anexa Bearer a subdomínio malicioso que só PREFIXA a base (base.evil.com)', async () => {
+    await montarComBase({ apiUrl: BASE_API });
+    // startsWith(base) SEM a barra casaria este prefixo e vazaria o token
+    client.get(`${BASE_API}.evil.com/api/riot/masteries`).subscribe();
+    const req = http.expectOne(`${BASE_API}.evil.com/api/riot/masteries`);
+    expect(req.request.headers.get('Authorization')).toBe(null);
+    req.flush({});
+  });
+
+  it('não anexa Bearer a URL protocol-relative (//host) quando a base é vazia', async () => {
+    await montarComBase({});
+    // //host não é relativa: é outro domínio inteiro (http por herança da página)
+    client.get('//api.evil.com/api/auth/register').subscribe();
+    const req = http.expectOne('//api.evil.com/api/auth/register');
+    expect(req.request.headers.get('Authorization')).toBe(null);
+    req.flush({});
+  });
+
   it('não anexa Bearer quando não há token', async () => {
     await montarComBase({ apiUrl: BASE_API });
     localStorage.removeItem('cf_auth');

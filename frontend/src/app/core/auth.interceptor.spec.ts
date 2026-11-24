@@ -1,10 +1,13 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiUrl } from './api-url.service';
 import { authInterceptor } from './auth.interceptor';
+import { routes } from '../app.routes';
+import { Auth } from './auth.service';
 
 /** URL da CDN Community Dragon (cromas) — nunca pode receber o Bearer. */
 const URL_CD_DRAGON =
@@ -108,5 +111,131 @@ describe('authInterceptor — Bearer anexado só quando a URL está na base da A
     const req = http.expectOne(`${BASE_API}/api/auth/register`);
     expect(req.request.headers.get('Authorization')).toBe(null);
     req.flush({});
+  });
+});
+
+/**
+ * Sessão expirada ou inválida: 401/403 vindo da NOSSA API (o backend responde 403 para rota
+ * protegida sem token — registrado no RotasProtegidasSemTokenTest; 401 é o auth do JwtAuthFilter)
+ * deve limpar token/user e levar ao /login. Exceções: /api/auth/login e /api/auth/register (o
+ * 401/403 ali é credencial errada tratada pela própria página) e qualquer host EXTERNO. 500 e
+ * erros de rede também ficam de fora — não são sessão. Sem laço: já em /login, nada é navegado
+ * de novo, e os endpoints de sessão estão isentos.
+ */
+describe('authInterceptor — sessão expirada/inválida (401/403)', () => {
+  let client: HttpClient;
+  let http: HttpTestingController;
+  let auth: Auth;
+  let navigateByUrl: ReturnType<typeof vi.spyOn>;
+
+  async function montar(): Promise<void> {
+    localStorage.setItem(
+      'cf_auth',
+      JSON.stringify({
+        token: tokenFalso(),
+        user: { id: 1, email: 'teste@teste.dev', displayName: 'Teste' },
+      }),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({ ok: true, json: () => Promise.resolve({ apiUrl: BASE_API }) } as Response),
+      ),
+    );
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter(routes),
+      ],
+    });
+    client = TestBed.inject(HttpClient);
+    http = TestBed.inject(HttpTestingController);
+    auth = TestBed.inject(Auth);
+    navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+    await TestBed.inject(ApiUrl).load();
+  }
+
+  afterEach(() => {
+    localStorage.removeItem('cf_auth');
+    vi.unstubAllGlobals();
+    http.verify();
+  });
+
+  function falhaComStatus(url: string, status: 401 | 403 | 500): void {
+    client.get(`${BASE_API}${url}`).subscribe({ error: () => undefined });
+    const req = http.expectOne(`${BASE_API}${url}`);
+    req.flush(
+      { error: 'falhou' },
+      { status, statusText: status === 403 ? 'Forbidden' : status === 401 ? 'Unauthorized' : 'Server Error' },
+    );
+  }
+
+  it('401 na rota protegida limpa a sessão e leva ao /login', async () => {
+    await montar();
+    expect(auth.token()).not.toBeNull();
+
+    falhaComStatus('/api/favorites', 401);
+
+    expect(auth.token()).toBeNull();
+    expect(auth.user()).toBeNull();
+    expect(navigateByUrl).toHaveBeenCalledWith('/login');
+  });
+
+  it('403 na rota protegida (status que o backend dá sem token) faz o mesmo', async () => {
+    await montar();
+
+    falhaComStatus('/api/riot/rotation', 403);
+
+    expect(auth.token()).toBeNull();
+    expect(navigateByUrl).toHaveBeenCalledWith('/login');
+  });
+
+  it('401 do /api/auth/login não desloga nem navega (credencial errada é da página)', async () => {
+    await montar();
+
+    falhaComStatus('/api/auth/login', 401);
+
+    expect(auth.token()).not.toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('403 do /api/auth/register não desloga nem navega', async () => {
+    await montar();
+
+    falhaComStatus('/api/auth/register', 403);
+
+    expect(auth.token()).not.toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('401/403 de host EXTERNO não mexe na sessão', async () => {
+    await montar();
+    client.get(URL_CD_DRAGON).subscribe({ error: () => undefined });
+    const req = http.expectOne(URL_CD_DRAGON);
+    req.flush({ error: 'fora' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(auth.token()).not.toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('500 da nossa API não desloga (não é sessão)', async () => {
+    await montar();
+
+    falhaComStatus('/api/favorites', 500);
+
+    expect(auth.token()).not.toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('sem laço: já em /login, um 401 não navega de novo', async () => {
+    await montar();
+    await TestBed.inject(Router).navigate(['/login']);
+    navigateByUrl.mockClear();
+
+    falhaComStatus('/api/favorites', 401);
+
+    expect(auth.token()).toBeNull();
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 });

@@ -50,12 +50,12 @@ class FavoriteServiceTest {
   @Test
   void addCopiaCamposDaRequisicao() {
     when(repo.existsByUserIdAndChampionIdIgnoreCase(USER, "Ahri")).thenReturn(false);
-    when(repo.save(any(Favorite.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(repo.saveAndFlush(any(Favorite.class))).thenAnswer(inv -> inv.getArgument(0));
 
     Favorite salvo = service.add(req());
 
     ArgumentCaptor<Favorite> captor = ArgumentCaptor.forClass(Favorite.class);
-    verify(repo).save(captor.capture());
+    verify(repo).saveAndFlush(captor.capture());
     assertEquals(USER, captor.getValue().getUserId());
     assertEquals("Ahri", salvo.getChampionId());
     assertEquals("Ahri", salvo.getChampionName());
@@ -68,6 +68,16 @@ class FavoriteServiceTest {
 
     assertThrows(DuplicateResourceException.class, () -> service.add(req()));
     verify(repo, never()).save(any());
+  }
+
+  @Test
+  void addQueBateNoUniqueEmCorridaVira409() {
+    // exists passou, mas o INSERT bate no UNIQUE (corrida) — a violação vira 409, nunca 500
+    when(repo.existsByUserIdAndChampionIdIgnoreCase(USER, "Ahri")).thenReturn(false);
+    when(repo.saveAndFlush(any(Favorite.class)))
+        .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uk_user_champion"));
+
+    assertThrows(DuplicateResourceException.class, () -> service.add(req()));
   }
 
   @Test

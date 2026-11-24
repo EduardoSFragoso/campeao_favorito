@@ -111,9 +111,9 @@ describe('ChampionDetailPage — [innerHTML] sanitizado', () => {
   it('não renderiza link javascript:', () => {
     const a = el.querySelector('.spells p a');
     if (a) {
-      // se sobrou <a>, o href não pode disparar código
+      // se sobrou <a>, o href não pode disparar código (javascript:, data:, vbscript:)
       const href = a.getAttribute('href')?.toLowerCase() ?? '';
-      expect(href.startsWith('javascript:')).toBe(false);
+      expect(/^(javascript|data|vbscript):/.test(href)).toBe(false);
     }
   });
 });

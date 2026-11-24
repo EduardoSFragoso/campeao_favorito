@@ -9,6 +9,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.favorito.api.common.RiotApiException;
@@ -125,5 +127,34 @@ class RiotServiceGuardasTest {
         IllegalArgumentException.class, () -> service.masteries("Hideonbush", "TOO-LONG", "br1"));
     assertEquals(0, mapaInterno("locks").size());
     assertEquals(0, mapaInterno("cache").size());
+  }
+
+  @Test
+  @DisplayName("gameName sem nenhum alfanumérico ('..') é rejeitado antes de tocar em cache/locks")
+  void gameNameSemAlfanumericoRejeitado() throws Exception {
+    // '..' passa na regex antiga (só proíbe caracteres estranhos) — a guarda é nova
+    assertThrows(IllegalArgumentException.class, () -> service.summonerProfile("..", "KR", "br1"));
+    assertEquals(0, mapaInterno("locks").size());
+    assertEquals(0, mapaInterno("cache").size());
+  }
+
+  @Test
+  @DisplayName("platform normalizada: 'BR1'/' BR1 '/'br1' dividem a MESMA entrada de cache")
+  void platformNormalizadaCompartilhaCache() throws Exception {
+    stubRotaFelizIgualParaTodoMundo();
+
+    // a mesma conta em variantes de escrita da MESMA platform: a 2ª tem de vir do cache
+    service.summonerProfile("Hideonbush", "KR", " BR1 ");
+    service.summonerProfile("Hideonbush", "KR", "br1");
+
+    // no código atual a chave do cache usa a platform crua ("profile: BR1 :…") — a 2ª chamada
+    // refaz a busca a Riot (2 chamadas) em vez de reaproveitar
+    verify(client, times(1))
+        .getRegional(
+            anyString(),
+            contains("/accounts/by-riot-id"),
+            eq(RiotDtos.RiotAccount.class),
+            any(),
+            any());
   }
 }

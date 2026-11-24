@@ -91,6 +91,11 @@ public final class RateLimiterDeJanela {
           maisAntiga = e.getKey();
         }
       }
+      if (maisAntiga == null) {
+        // inalcançável com um mapa consistente (size > 0 ⇒ existe mais antiga) — trava por via das
+        // dúvidas: ConcurrentHashMap.remove(null) lançaria NPE. Mesma proteção do RiotService.
+        break;
+      }
       chaves.remove(maisAntiga);
     }
   }

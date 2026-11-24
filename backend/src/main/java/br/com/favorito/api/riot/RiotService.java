@@ -79,13 +79,11 @@ public class RiotService {
     long agora = System.currentTimeMillis();
     cache.values().removeIf(c -> c.expiresAt() <= agora);
     while (cache.size() > MAX_ENTRADAS) {
-      String maisAntiga = null;
-      long menor = Long.MAX_VALUE;
-      for (var e : cache.entrySet()) {
-        if (e.getValue().sequencia() < menor) {
-          menor = e.getValue().sequencia();
-          maisAntiga = e.getKey();
-        }
+      String maisAntiga = maisAntigaPorSequencia(cache, Cached::sequencia);
+      if (maisAntiga == null) {
+        // inalcançável com um mapa consistente (size > 0 ⇒ existe mais antiga) — trava por via das
+        // dúvidas: melhor guardar o que já está lá do que remover chave errada
+        break;
       }
       cache.remove(maisAntiga);
     }
@@ -99,27 +97,38 @@ public class RiotService {
       // Enxuga o mais antigo. No pior caso (duas threads na mesma chave com o objeto novo e o
       // evictado) perde-se a exclusão mútua daquela chave por uma rodada — a consequência é só um
       // request extra ao upstream, nunca dado errado.
-      String maisAntiga = null;
-      long menor = Long.MAX_VALUE;
-      for (var e : locks.entrySet()) {
-        if (e.getValue().sequencia() < menor) {
-          menor = e.getValue().sequencia();
-          maisAntiga = e.getKey();
-        }
+      String maisAntiga = maisAntigaPorSequencia(locks, Cadeado::sequencia);
+      if (maisAntiga != null) {
+        locks.remove(maisAntiga);
       }
-      locks.remove(maisAntiga);
     }
     return atual;
   }
 
+  /** A chave de menor sequência no mapa (ordem de inserção) ou null se o mapa estiver vazio. */
+  private static <V> String maisAntigaPorSequencia(
+      Map<String, V> mapa, java.util.function.ToLongFunction<V> sequencia) {
+    String maisAntiga = null;
+    long menor = Long.MAX_VALUE;
+    for (var e : mapa.entrySet()) {
+      long s = sequencia.applyAsLong(e.getValue());
+      if (s < menor) {
+        menor = s;
+        maisAntiga = e.getKey();
+      }
+    }
+    return maisAntiga;
+  }
+
   /**
    * Mesmas regras dos {@code @Pattern} do controller — mas aqui dentro, e ANTES de qualquer uso de
-   * cache/locks: o valor vai para a chave dos dois, e a platform para a URL da Riot.Uma entrada
-   * inválida não pode abrir lock nem deixar resíduo nos mapas.
+   * cache/locks: o valor vai para a chave dos dois, e a platform para a URL da Riot. Além do
+   * conjunto de caracteres, exige ao menos um alfanumérico (o lookahead rejeita lixo tipo ".." ou "
+   * - "). Uma entrada inválida não pode abrir lock nem deixar resíduo nos mapas.
    */
   private static String exigirTextoValido(String valor, String mensagem) {
     String v = valor == null ? "" : valor.trim();
-    if (v.isBlank() || !v.matches("[\\p{L}\\p{N} ._'\\-]{1,32}")) {
+    if (v.isBlank() || !v.matches("(?=.*[\\p{L}\\p{N}])[\\p{L}\\p{N} ._'\\-]{1,32}")) {
       throw new IllegalArgumentException(mensagem);
     }
     return v;
@@ -133,29 +142,37 @@ public class RiotService {
     return t;
   }
 
-  private static void exigirPlataformaValida(String platform) {
+  /**
+   * Valida e NORMALIZA a platform (trim + minúsculas); null/vazia vira o default {@code br1}. O
+   * valor devolvido é o que entra na chave do cache e nas chamadas ao cliente — "BR1", " br1 " e
+   * "br1" dividem a mesma entrada em vez de cache triplicado.
+   */
+  private static String normalizarPlataforma(String platform) {
     String p = (platform == null || platform.isBlank()) ? "br1" : platform.trim().toLowerCase();
     if (!RiotClient.platforms().contains(p)) {
       throw new IllegalArgumentException("Plataforma inválida: " + p);
     }
+    return p;
   }
 
   public RiotDtos.SummonerProfile summonerProfile(
       String gameName, String tagLine, String platform) {
     String gn =
-        exigirTextoValido(gameName, "gameName: 2–32 caracteres: letras, números, espaço, . _ ' -");
+        exigirTextoValido(
+            gameName,
+            "gameName: 1–32 caracteres: letras, números, espaço, . _ ' -; ao menos um alfanumérico");
     String tl = exigirTagValida(tagLine);
-    exigirPlataformaValida(platform);
+    String plataforma = normalizarPlataforma(platform);
     String key = gn.toUpperCase() + "#" + tl.toUpperCase();
 
     return withCache(
-        "profile:" + platform + ":" + key,
+        "profile:" + plataforma + ":" + key,
         () -> {
           RiotDtos.RiotAccount account;
           try {
             account =
                 client.getRegional(
-                    platform,
+                    plataforma,
                     "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
                     RiotDtos.RiotAccount.class,
                     gn,
@@ -180,7 +197,7 @@ public class RiotService {
           try {
             summoner =
                 client.getServer(
-                    platform,
+                    plataforma,
                     "/lol/summoner/v4/summoners/by-puuid/{puuid}",
                     RiotDtos.RiotSummoner.class,
                     account.puuid());
@@ -193,7 +210,7 @@ public class RiotService {
                   "Conta \""
                       + key
                       + "\" existe, mas não tem LoL no servidor \""
-                      + platform
+                      + plataforma
                       + "\". Confira a região (?platform=).");
             }
             throw e;
@@ -206,7 +223,7 @@ public class RiotService {
                     try {
                       RiotDtos.LeagueEntry[] arr =
                           client.getServer(
-                              platform,
+                              plataforma,
                               "/lol/league/v4/entries/by-summoner/{sid}",
                               RiotDtos.LeagueEntry[].class,
                               summoner.id());
@@ -220,7 +237,7 @@ public class RiotService {
                         log.warn(
                             "Elo indisponível para {} na {} (HTTP {}) — perfil sem ranqueada.",
                             key,
-                            platform,
+                            plataforma,
                             e.upstreamStatus);
                         return List.<RiotDtos.LeagueEntry>of();
                       }
@@ -236,7 +253,7 @@ public class RiotService {
                     query.put("count", 5);
                     RiotDtos.MasteryDto[] arr =
                         client.getServer(
-                            platform,
+                            plataforma,
                             "/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top",
                             query,
                             RiotDtos.MasteryDto[].class,
@@ -263,19 +280,21 @@ public class RiotService {
    */
   public List<RiotDtos.MasteryDto> masteries(String gameName, String tagLine, String platform) {
     String gn =
-        exigirTextoValido(gameName, "gameName: 2–32 caracteres: letras, números, espaço, . _ ' -");
+        exigirTextoValido(
+            gameName,
+            "gameName: 1–32 caracteres: letras, números, espaço, . _ ' -; ao menos um alfanumérico");
     String tl = exigirTagValida(tagLine);
-    exigirPlataformaValida(platform);
+    String plataforma = normalizarPlataforma(platform);
     String key = gn.toUpperCase() + "#" + tl.toUpperCase();
 
     return withCache(
-        "masteryAll:" + platform + ":" + key,
+        "masteryAll:" + plataforma + ":" + key,
         () -> {
           RiotDtos.RiotAccount account;
           try {
             account =
                 client.getRegional(
-                    platform,
+                    plataforma,
                     "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
                     RiotDtos.RiotAccount.class,
                     gn,
@@ -298,7 +317,7 @@ public class RiotService {
 
           RiotDtos.MasteryDto[] arr =
               client.getServer(
-                  platform,
+                  plataforma,
                   "/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}",
                   RiotDtos.MasteryDto[].class,
                   account.puuid());
@@ -307,14 +326,14 @@ public class RiotService {
   }
 
   public RiotDtos.ChampionRotation rotation(String platform) {
-    exigirPlataformaValida(platform);
+    String plataforma = normalizarPlataforma(platform);
     Cached<RiotDtos.ChampionRotation> hit = rotationCache.get();
     if (hit != null && hit.expiresAt() > System.currentTimeMillis()) {
       return hit.value();
     }
     RiotDtos.ChampionRotation rotation =
         client.getServer(
-            platform, "/lol/platform/v3/champion-rotations", RiotDtos.ChampionRotation.class);
+            plataforma, "/lol/platform/v3/champion-rotations", RiotDtos.ChampionRotation.class);
     if (rotation == null) {
       throw new RiotApiException(404, "Rotação indisponível.");
     }

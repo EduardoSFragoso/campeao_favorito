@@ -4,13 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 import org.springframework.mock.env.MockEnvironment;
 
-/** Contrato do token: round-trip, expiração, token adulterado e o fail-fast do perfil prod. */
+/** Contrato do token: round-trip, expiração, token adulterado e os fail-fast do guard do secret. */
 class JwtServiceTest {
 
   private static final String SECRET =
@@ -85,10 +86,70 @@ class JwtServiceTest {
   }
 
   @Test
-  void placeholderForaDoPerfilProdContinuaAceito() {
-    JwtService dev = new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, new MockEnvironment());
-    String token = dev.issue(user);
-    assertEquals("42", dev.validate(token));
+  void placeholderSemPerfilExplicitoERecusado() {
+    // no código anterior o placeholder era recusado só no perfil prod e aceito em qualquer
+    // outro ambiente — agora sem perfil dev/test EXPLÍCITO ele é rejeitado de cara
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class,
+            () -> new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, new MockEnvironment()));
+    assertEquals(
+        "JWT_SECRET não definida: o placeholder do repositório só é aceito "
+            + "nos perfis dev/test. Defina JWT_SECRET no ambiente (openssl rand -base64 64).",
+        ex.getMessage());
+  }
+
+  @Test
+  void segredoComMenosDe32BytesERecusado() {
+    // no código anterior não era o guard: o io.jsonwebtoken recusava com WeakKeyException
+    // (mensagem genérica de lib); a agora é uma regra nossa, com mensagem própria e exceção
+    // do Spring context
+    String curto = "chave-curta"; // < 32 bytes
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class, () -> new JwtService(curto, 1000L, new MockEnvironment()));
+    assertEquals(
+        "JWT_SECRET muito fraca: 11 bytes; o mínimo é 32 bytes (HS256)."
+            + " Gere com openssl rand -base64 64.",
+        ex.getMessage());
+  }
+
+  @Test
+  void placeholderAceitoApenasComPerfilDevOuTestExplicito() {
+    // dev explícito: placeholder segue funcionando (sprint local)
+    MockEnvironment dev = new MockEnvironment();
+    dev.setActiveProfiles("dev");
+    JwtService comPlaceholder = new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, dev);
+    assertEquals("42", comPlaceholder.validate(comPlaceholder.issue(user)));
+
+    // idem no perfil test (smoke e slices)
+    MockEnvironment test = new MockEnvironment();
+    test.setActiveProfiles("test");
+    JwtService noTest = new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, test);
+    assertEquals("42", noTest.validate(noTest.issue(user)));
+  }
+
+  @Test
+  void segredoCurtoRecusadoMesmoComPerfilDevOuTest() {
+    // abaixo de 32 bytes o io.jsonwebtoken recusaria de qualquer forma (WeakKeyException);
+    // a regra fecha antes, com mensagem acionável — aplicar "padding" em dev esconderia o
+    // problema, então a exceção dev/test vale apenas para o placeholder (69 bytes, HS256 ok)
+    String curto = "chave-curta"; // 11 bytes
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class, () -> new JwtService(curto, 1000L, ambiente("dev")));
+    assertTrue(ex.getMessage().contains("muito fraca"));
+
+    IllegalStateException exTest =
+        assertThrows(
+            IllegalStateException.class, () -> new JwtService(curto, 1000L, ambiente("test")));
+    assertTrue(exTest.getMessage().contains("muito fraca"));
+  }
+
+  private MockEnvironment ambiente(String perfil) {
+    MockEnvironment env = new MockEnvironment();
+    env.setActiveProfiles(perfil);
+    return env;
   }
 
   @Test

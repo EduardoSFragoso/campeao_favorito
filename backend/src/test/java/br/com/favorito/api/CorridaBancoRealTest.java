@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import br.com.favorito.api.auth.AuthDtos;
 import br.com.favorito.api.auth.AuthService;
 import br.com.favorito.api.auth.UserRepository;
+import br.com.favorito.api.config.SegredoDeTeste;
 import br.com.favorito.api.favorites.FavoriteDtos;
 import br.com.favorito.api.favorites.FavoriteRepository;
 import br.com.favorito.api.favorites.FavoriteService;
@@ -31,7 +32,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * Exige Postgres real, como o smoke test: roda na CI (job backend) e localmente só com DB_URL no
  * ambiente. Duas threads correm em paralelo; o invariante é 1 linha, nunca duplicata.
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.jwt.secret=" + SegredoDeTeste.JWT_SECRET)
 @EnabledIfEnvironmentVariable(named = "DB_URL", matches = ".+")
 class CorridaBancoRealTest {
 

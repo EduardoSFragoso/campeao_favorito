@@ -24,7 +24,8 @@ server:
 
 app:
   jwt:
-    # gere um secret forte: openssl rand -base64 64
+    # gere um secret forte: openssl rand -base64 64 (mínimo 32 bytes). O JwtService RECUSA
+    # este placeholder em qualquer ambiente sem o perfil dev ou test ativo explicitamente.
     secret: ${JWT_SECRET:troque-este-secret-em-producao-com-uma-chave-de-64-bytes-no-minimo!!}
     expiration-ms: 604800000 # 7 dias
   cors:

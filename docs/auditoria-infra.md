@@ -222,4 +222,6 @@ Resultado da última auditoria completa (código + histórico + API do GitHub). 
 
 - sshd: `passwordauthentication no`; env da app com `600`; rpcbind desativado; saúde via `monitor.yml`.
 - Java escuta **só no loopback** (`server.address: 127.0.0.1` no perfil de produção) — aplicar com o deploy normal e conferir `ss -tlnp` esperando `127.0.0.1:8080`.
-- Pendências de endurecimento (baixa prioridade): `ufw` não instalado (a Security List da Oracle faz o papel — conferir no console: só 80/443 públicas, SSH restrito); deploy continua manual (sem chave dedicada em Environment).
+- **Security List conferida (2026-11-23):** ingress só 22 e 443 em `0.0.0.0/0` (+ ICMP 3/3,4 de infraestrutura); 80 não exposto e não precisa — a renovação do cert usa **TLS-ALPN-01 na 443**. SSH restrito por chave (`passwordauthentication no`).
+- Pendência de endurecimento (baixa prioridade): deploy continua manual (sem chave dedicada em GitHub Environment).
+- Pendências fechadas nesta data: backup do Neon ativo (`backup-neon.yml`) e homologado com restauro do `.gpg`; bind do 8080 aplicado na VM (`127.0.0.1`, novo PID confirmado); dependência do CodeQL via **Default setup** (Java + TS); assinatura de commits descartada por decisão do dono.

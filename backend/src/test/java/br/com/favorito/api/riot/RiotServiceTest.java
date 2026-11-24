@@ -341,4 +341,28 @@ class RiotServiceTest {
         assertThrows(RiotApiException.class, () -> service.masteries("naoexiste", "BR1", "br1"));
     assertEquals(404, ex.upstreamStatus);
   }
+
+  // ---------- rotation ----------
+
+  @Test
+  @DisplayName("rotation: cache separado por plataforma — na1 não recebe o valor de br1")
+  void rotacaoCacheiaPorPlataforma() {
+    RiotDtos.ChampionRotation rotBr = new RiotDtos.ChampionRotation(1, List.of(266), List.of(103));
+    RiotDtos.ChampionRotation rotNa = new RiotDtos.ChampionRotation(2, List.of(84), List.of(145));
+    when(client.getServer(
+            eq("br1"), contains("champion-rotations"), eq(RiotDtos.ChampionRotation.class)))
+        .thenReturn(rotBr);
+    when(client.getServer(
+            eq("na1"), contains("champion-rotations"), eq(RiotDtos.ChampionRotation.class)))
+        .thenReturn(rotNa);
+
+    assertEquals(rotBr, service.rotation("br1"));
+    assertEquals(rotNa, service.rotation("na1"));
+
+    // cada plataforma busca uma vez só (cache por plataforma)
+    verify(client, times(1))
+        .getServer(eq("br1"), contains("champion-rotations"), eq(RiotDtos.ChampionRotation.class));
+    verify(client, times(1))
+        .getServer(eq("na1"), contains("champion-rotations"), eq(RiotDtos.ChampionRotation.class));
+  }
 }

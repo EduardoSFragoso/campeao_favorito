@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -42,8 +41,13 @@ public class RiotService {
   /** Ordem de inserção de cache/locks — a fila dos evictados quando o teto estoura. */
   private final AtomicLong sequencia = new AtomicLong();
 
-  private final AtomicReference<Cached<RiotDtos.ChampionRotation>> rotationCache =
-      new AtomicReference<>();
+  /**
+   * Rotação semanal cacheada POR PLATAFORMA: cada região tem a própria lista — um único valor
+   * compartilhado entre br1/na1/... servia a rotação errada. Sem teto necessário: a whitelist de
+   * plataformas do {@link RiotClient} limita o mapa a ~17 entradas.
+   */
+  private final Map<String, Cached<RiotDtos.ChampionRotation>> rotationCache =
+      new ConcurrentHashMap<>();
 
   @SuppressWarnings("unchecked")
   private <T> T withCache(String key, java.util.function.Supplier<T> loader) {
@@ -327,7 +331,7 @@ public class RiotService {
 
   public RiotDtos.ChampionRotation rotation(String platform) {
     String plataforma = normalizarPlataforma(platform);
-    Cached<RiotDtos.ChampionRotation> hit = rotationCache.get();
+    Cached<RiotDtos.ChampionRotation> hit = rotationCache.get(plataforma);
     if (hit != null && hit.expiresAt() > System.currentTimeMillis()) {
       return hit.value();
     }
@@ -337,7 +341,8 @@ public class RiotService {
     if (rotation == null) {
       throw new RiotApiException(404, "Rotação indisponível.");
     }
-    rotationCache.set(
+    rotationCache.put(
+        plataforma,
         new Cached<>(
             rotation, System.currentTimeMillis() + ROTATION_TTL_MS, sequencia.incrementAndGet()));
     return rotation;

@@ -29,6 +29,9 @@ public class SecurityConfig {
 
   @Bean
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    // codeql[java/spring-disabled-csrf-protection] stateless, sem cookie: CSRF não se aplica
+    // Decisão de arquitetura: JwtAuthFilter valida o token de cada request; o front nunca
+    // envia cookie de sessão, então não existe credencial implícita para o CSRF explorar.
     http.csrf(csrf -> csrf.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

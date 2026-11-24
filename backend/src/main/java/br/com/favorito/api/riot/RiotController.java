@@ -32,8 +32,9 @@ public class RiotController {
   private final RiotRateLimiter rateLimiter;
 
   /**
-   * 30 req/min por usuário autenticado (chave = id do token). Testes de slice autenticam via post
-   * processor; em prod, o JwtAuthFilter constrói o token com o id como principal.
+   * 10 req/min por usuário autenticado (chave = id do token) MAIS um limite GLOBAL de 40/min para
+   * todas as rotas /api/riot/** juntos. Testes de slice autenticam via post processor; em prod, o
+   * JwtAuthFilter constrói o token com o id como principal.
    */
   private void limitarPorUsuario() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -46,8 +47,9 @@ public class RiotController {
       @RequestParam
           @NotBlank
           @Pattern(
-              regexp = "[\\p{L}\\p{N} ._'\\-]{1,32}",
-              message = "2–32 caracteres: letras, números, espaço, . _ ' -")
+              regexp = "(?=.*[\\p{L}\\p{N}])[\\p{L}\\p{N} ._'\\-]{1,32}",
+              message =
+                  "1–32 caracteres: letras, números, espaço, . _ ' -; ao menos um alfanumérico")
           String gameName,
       @RequestParam
           @NotBlank
@@ -71,8 +73,9 @@ public class RiotController {
       @RequestParam
           @NotBlank
           @Pattern(
-              regexp = "[\\p{L}\\p{N} ._'\\-]{1,32}",
-              message = "2–32 caracteres: letras, números, espaço, . _ ' -")
+              regexp = "(?=.*[\\p{L}\\p{N}])[\\p{L}\\p{N} ._'\\-]{1,32}",
+              message =
+                  "1–32 caracteres: letras, números, espaço, . _ ' -; ao menos um alfanumérico")
           String gameName,
       @RequestParam
           @NotBlank

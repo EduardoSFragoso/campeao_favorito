@@ -62,12 +62,20 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   `/etc/nginx/proxy_params` tem `$proxy_add_x_forwarded_for`, mas não é incluído por este
   vhost.
 - **Rate limits (janela fixa por chave, em memória — motor único `RateLimiterDeJanela`)**:
-  login 10/min por IP; register 5/min por IP; `/api/riot/**` 30/min POR USUÁRIO (id do token).
-  Teto de chaves nos mapas (10.000: vencidas saem primeiro, depois as mais antigas). Nuances:
-  o IP real vale o aviso do item acima (nginx único proxy); os limites de login/register
-  SECUEM a corrente do IP — se a strategy de forwarded headers mudar, os três viram um
-  contador só do loopback; o da Riot depende do `Authentication.getName()` — filtros que
-  troquem o principal mudam a chave.
+  login 10/min por IP; register 5/min por IP; `/api/riot/**` 10/min POR USUÁRIO (id do token)
+  MAIS um limite GLOBAL de 40/min para todas as rotas Riot juntas (chave fixa no mesmo motor;
+  o por-usuário é checado primeiro, então quem já estourou o próprio não consome vaga do
+  global). Teto de chaves nos mapas (10.000: vencidas saem primeiro, depois as mais antigas).
+  Nuances: o IP real vale o aviso do item acima (nginx único proxy); os limites de
+  login/register SECUEM a corrente do IP — se a strategy de forwarded headers mudar, os três
+  viram um contador só do loopback; o da Riot depende do `Authentication.getName()` — filtros
+  que trocarem o principal mudam a chave.
+- **RiotService**: a platform é normalizada (trim + minúsculas) ANTES da chave do cache —
+  "BR1", " br1 " e "br1" dividem a mesma entrada. O `gameName` exige ao menos um caractere
+  alfanumérico (lookahead na mesma regex do controller — rejeita `..`, ` - `). Os evicts de
+  mais-antigo nos mapas (cache, locks e `RateLimiterDeJanela`) são null-safe e travam se um
+  dia o mapa aparecer inconsistente.
+
 - **Esquema do banco**: só por migração Flyway versionada. Nunca mexer em tabela na mão nem
   religar `ddl-auto` para algo diferente de `validate`.
 - **Roles no Neon**: produção tem duas roles — `campeao_app` (senha forte no env da VM), **dona

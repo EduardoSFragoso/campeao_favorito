@@ -4,6 +4,9 @@
 # nginx na frente: acredita em X-Forwarded-For/Proto (setado pelo proxy) —
 # é o que faz getRemoteAddr() devolver o IP do cliente e não o 127.0.0.1 do proxy
 server:
+  # escuta só no loopback: atrás do nginx, nada precisa do 8080 na rede;
+  # endereçável de fora mesmo que a Security List da Oracle um dia mude
+  address: 127.0.0.1
   forward-headers-strategy: framework
 
 springdoc:

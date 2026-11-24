@@ -199,7 +199,7 @@ Resultado da última auditoria completa (código + histórico + API do GitHub). 
 ### GitHub Pages e repositório
 
 - Deploy publicado **só com o frontend**: os arquivos da raiz (`README.md`, `handoff.md`) e do backend (`application.yml`) voltam 404 no site; HTTPS reforçado.
-- Origem do Pages em _Settings_ mostra "branch `main` /" — a publicação real é pelo workflow `deploy-gh-pages.yml` (artefato). Pendente cosmético: trocar a origem para _GitHub Actions_.
+- Pages com origem `_GitHub Actions_` (`build_type: workflow`) — só o artefato do workflow `deploy-gh-pages.yml` é publicado; HTTPS reforçado.
 - Nenhum arquivo sensível versionado nem no histórico (só a migração Flyway, legítima). Gitleaks limpo em código e histórico (`gitleaks git --redact -v`); falso positivo do `JwtServiceTest` coberto pelo `.gitleaks.toml`.
 - Secret scanning e push protection **ativados**; Dependabot security updates **ativados** (além do `dependabot.yml` semanal).
 - `monitor.yml` (health check agendado) contém o endereço do backend — trade-off consciente de repo público; o IP real também aparece em logs de execução.
@@ -221,4 +221,5 @@ Resultado da última auditoria completa (código + histórico + API do GitHub). 
 ### VM
 
 - sshd: `passwordauthentication no`; env da app com `600`; rpcbind desativado; saúde via `monitor.yml`.
-- Pendências de endurecimento (baixa prioridade): `ufw` não instalado (a Security List da Oracle faz o papel — conferir no console: só 80/443 públicas, SSH restrito); Java escuta em `*:8080` (a nuvem bloqueia de fora, mas vale mudar o bind para 127.0.0.1); deploy continua manual (sem chave dedicada em Environment).
+- Java escuta **só no loopback** (`server.address: 127.0.0.1` no perfil de produção) — aplicar com o deploy normal e conferir `ss -tlnp` esperando `127.0.0.1:8080`.
+- Pendências de endurecimento (baixa prioridade): `ufw` não instalado (a Security List da Oracle faz o papel — conferir no console: só 80/443 públicas, SSH restrito); deploy continua manual (sem chave dedicada em Environment).

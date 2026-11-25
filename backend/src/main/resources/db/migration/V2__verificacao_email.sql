@@ -15,7 +15,10 @@ CREATE TABLE verificacao_email (
     expira_em  TIMESTAMP WITH TIME ZONE NOT NULL,
     usado_em   TIMESTAMP WITH TIME ZONE,
     criado_em  TIMESTAMP WITH TIME ZONE NOT NULL,
+    -- CASCADE: pedidos de verificação pertencem ao usuário — remover a conta
+    -- não pode ficar impedida por tokens pendentes (nem na limpeza de testes)
     CONSTRAINT fk_verificacao_user FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE CASCADE
 );
 
 -- a checagem do token chega como hash — índice dedicado ao lookup

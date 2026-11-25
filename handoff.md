@@ -19,7 +19,7 @@ backend/                 Spring Boot 4 (Java 25), systemd na VM Oracle
   src/main/resources/
     application.yml      defaults dev; prod sobrepõe via application-prod.yml
     db/migration/        Flyway (V1+: FONTE DA VERDADE do esquema)
-docs/                    fase VM/TLS, chave de Riot pessoal, auditoria de infra
+docs/                    fase VM/TLS, chave de Riot pessoal, rotação de chaves, auditoria de infra
 .github/workflows/       ci.yml, deploy-gh-pages.yml, monitor.yml, backup-neon.yml (.github/dependabot.yml)
 ```
 
@@ -192,43 +192,48 @@ Cada linha em uma frase; branch/main sempre pelo fluxo PR → Rebase and merge.
 Priorizadas — da mais urgente para a menos:
 
 1. **Chave de produção pessoal da Riot** — com ela o elo ranqueado volta a ser exibido (o
-   degrade já está pronto). Rascunho em `docs/riot-personal-key-application.md`.
+   degrade já está pronto). Rascunho em `docs/riot-personal-key-application.md`; passos do
+   pedido no [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 5 (ação do dono no portal).
 2. **Qualquer CDN/proxy novo na frente da API** — reavaliar a sobrescrita de
    `X-Forwarded-For`/`Forwarded` do vhost e a strategy `framework` (os rate limits por IP —
-   login e register — dependem disso; hoje é seguro só enquanto o nginx for o único proxy).
+   login e register — dependem disso). Nota "quando revisar" no
+   [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 3.
 3. **Suíte de banco real no dev local** — os testes de `CorridaBancoRealTest` ficam skipped sem
    `DB_URL`; subir um Postgres descartável local (container) facilitaria a rede de segurança
    fora da CI.
-4. **Rotação periódica da chave da Riot e do `JWT_SECRET`** — processo manual hoje; documentar
-   janela e passos no runbook quando virar operação de fato.
-5. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; se um
-   dia o `Require code scanning results` entrar no ruleset, revisar tempos de análise.
-6. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
+4. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; nota
+   "quando revisar" no [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 3.
+5. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-7. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — verificar na
+6. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — verificar na
    documentação atual da Riot se `league/v4/entries/by-summoner` está depreciada em favor de
    `by-puuid`; migrar se estiver. Verificar também o tratamento de `summoner.id` nulo e a
    chave de cache do ranking, que hoje depende do summonerId.
-8. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
+7. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
-9. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
+8. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
    leitura com o mapper padrão; falta um teste que passe pela resposta HTTP real do `RestClient`
    (servidor de stub) com `null` nos numéricos, garantindo que os conversores usados em runtime
    têm a mesma tolerância.
-10. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
-    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-11. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
+9. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
+   é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
+10. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
     Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
-12. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
+11. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
     revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
-13. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+12. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
     testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
-14. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional da VM;
-    não altera o app, só o acesso de administração.
+13. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+    atual, trade-offs e passos de validação/rollback no
+    [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
+    fora do repositório).
 
 ## Pendências resolvidas (arquivo)
 
+- Runbook de rotação de chaves criado (`docs/rotacao-chaves.md`): passos/rollback da chave da
+  Riot e do `JWT_SECRET`, com janelas sugeridas (era a pendência 4; hoje a rotação é manual do
+  dono, o runbook é a instrução).
 - Visitante que busca invocador é levado para `/login` quando a API responde 401/403
   (PR 67).
 - **Auditoria de infra concluída em 2026-11-23** — `docs/auditoria-infra.md` com todas as seções

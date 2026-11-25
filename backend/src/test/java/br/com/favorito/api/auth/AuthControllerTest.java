@@ -1,6 +1,7 @@
 package br.com.favorito.api.auth;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,6 +42,8 @@ class AuthControllerTest {
 
   @MockitoBean AuthService authService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
+  @MockitoBean UserRepository users; // dependência do JwtAuthFilter real (revogação por ver)
+  @MockitoBean CurrentUserService currentUser;
   @MockitoBean LoginRateLimiter loginLimiter;
   @MockitoBean RegisterRateLimiter registerLimiter;
   @MockitoBean VerificacaoEmailService verificacao;
@@ -117,5 +120,27 @@ class AuthControllerTest {
                 .content("{\"email\":\"\",\"password\":\"12345678\"}"))
         .andExpect(status().isBadRequest());
     verify(loginLimiter, never()).check(any());
+  }
+
+  @Test
+  void logoutAutenticadoChamaOServicoEDevolve204() throws Exception {
+    // autenticação pela CADEIA REAL: token válido com a versão atual do banco
+    User dono = new User();
+    dono.setId(42L);
+    dono.setTokenVer((short) 0);
+    when(jwtService.validate("t-logout")).thenReturn("42");
+    when(jwtService.versaoDoToken("t-logout")).thenReturn(0);
+    when(users.findById(42L)).thenReturn(java.util.Optional.of(dono));
+    when(currentUser.userId()).thenReturn(42L);
+
+    mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer t-logout"))
+        .andExpect(status().isNoContent());
+    verify(authService).logout(42L);
+  }
+
+  @Test
+  void logoutSemTokenNaoChegaNoServico() throws Exception {
+    mvc.perform(post("/api/auth/logout")).andExpect(status().is4xxClientError());
+    verify(authService, never()).logout(anyLong());
   }
 }

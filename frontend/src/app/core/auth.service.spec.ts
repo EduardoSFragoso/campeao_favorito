@@ -76,4 +76,38 @@ describe('Auth — cadastro sem login automático (verificação de e-mail)', ()
 
     expect(msg).toBe('E-mail confirmado — já pode entrar.');
   });
+
+  it('logout com sessão revoga no servidor por fetch (fora do interceptor) e limpa o local', async () => {
+    await montarComBase();
+    const fetchMock = vi.fn(() => Promise.resolve({ ok: true } as Response));
+    vi.stubGlobal('fetch', fetchMock);
+    const promise = service.login('ana@teste.dev', 'senhaforte1');
+    http
+      .expectOne(`${BASE_API}/api/auth/login`)
+      .flush({ token: 'jwt-antigo', user: { id: 7, email: 'ana@teste.dev', displayName: 'Ana' } });
+    await promise;
+
+    service.logout();
+
+    expect(service.token()).toBeNull();
+    expect(service.user()).toBeNull();
+    expect(service.isLoggedIn()).toBe(false);
+    expect(localStorage.getItem('cf_auth')).toBeNull();
+    // um chamado só, com o token que a sessão tinha (inclusive no 401 do interceptor)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${BASE_API}/api/auth/logout`);
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer jwt-antigo');
+  });
+
+  it('logout sem sessão não faz chamada nenhuma', async () => {
+    await montarComBase();
+    const fetchMock = vi.fn(() => Promise.resolve({ ok: true } as Response));
+    vi.stubGlobal('fetch', fetchMock);
+
+    service.logout();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

@@ -46,6 +46,7 @@ class FavoriteControllerTest {
 
   @MockitoBean FavoriteService favoriteService;
   @MockitoBean br.com.favorito.api.auth.JwtService jwtService; // dependência do filtro real
+  @MockitoBean br.com.favorito.api.auth.UserRepository users; // revisão de sessão (token_ver)
 
   private Favorite favorito(long id, String championId, String name) {
     Favorite f = new Favorite();

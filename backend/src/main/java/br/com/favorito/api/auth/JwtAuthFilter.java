@@ -15,9 +15,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
   private final JwtService jwtService;
+  private final UserRepository users;
 
-  public JwtAuthFilter(JwtService jwtService) {
+  public JwtAuthFilter(JwtService jwtService, UserRepository users) {
     this.jwtService = jwtService;
+    this.users = users;
   }
 
   @Override
@@ -26,8 +28,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
     String header = request.getHeader("Authorization");
     if (header != null && header.startsWith("Bearer ")) {
-      String userId = jwtService.validate(header.substring(7));
-      if (userId != null) {
+      String token = header.substring(7);
+      String userId = jwtService.validate(token);
+      Integer ver = jwtService.versaoDoToken(token);
+      // sessão válida só se a versão do token conferir com o banco: logout incrementa token_ver
+      // e TODOS os JWT emitidos antes (de qualquer dispositivo) deixam de autenticar.
+      boolean sessaoAtual =
+          userId != null
+              && ver != null
+              && users
+                  .findById(Long.parseLong(userId))
+                  .filter(user -> user.getTokenVer() == ver)
+                  .isPresent();
+      if (sessaoAtual) {
         var auth = new UsernamePasswordAuthenticationToken(userId, null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);
       }

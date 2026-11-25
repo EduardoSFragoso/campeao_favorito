@@ -40,6 +40,9 @@ class GlobalExceptionHandlerTest {
   // dependência do JwtAuthFilter real
   @MockitoBean JwtService jwtService;
 
+  @MockitoBean
+  br.com.favorito.api.auth.UserRepository users; // dependência do JwtAuthFilter (token_ver)
+
   /** Controller-fantasma que provoca a exceção — não existe no app real. */
   @RestController
   static class ProvoController {

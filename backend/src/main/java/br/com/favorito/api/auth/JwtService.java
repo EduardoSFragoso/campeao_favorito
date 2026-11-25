@@ -70,6 +70,8 @@ public class JwtService {
         .subject(String.valueOf(user.getId()))
         .claim("email", user.getEmail())
         .claim("displayName", user.getDisplayName())
+        // versão da sessão: o filtro compara com token_ver do banco (revogação pelo logout)
+        .claim("ver", (int) user.getTokenVer())
         .issuedAt(Date.from(now))
         .expiration(Date.from(now.plusMillis(expirationMs)))
         .signWith(key)
@@ -83,6 +85,21 @@ public class JwtService {
     try {
       Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
       return claims.getSubject();
+    } catch (JwtException | IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Versão da sessão gravada no token (claim "ver"), para o filtro confrontar com token_ver do
+   * banco.
+   *
+   * @return a versão, ou null se o token for inválido/novo demais para ter o claim
+   */
+  public Integer versaoDoToken(String token) {
+    try {
+      Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+      return claims.get("ver", Integer.class);
     } catch (JwtException | IllegalArgumentException e) {
       return null;
     }

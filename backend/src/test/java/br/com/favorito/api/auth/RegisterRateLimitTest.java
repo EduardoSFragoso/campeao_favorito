@@ -57,6 +57,8 @@ class RegisterRateLimitTest {
 
   @MockitoBean AuthService authService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
+  @MockitoBean UserRepository users; // revisão de sessão do filtro (token_ver)
+  @MockitoBean CurrentUserService currentUser; // dependência do AuthController (logout)
   @MockitoBean VerificacaoEmailService verificacao;
 
   private static String corpo(String email) {

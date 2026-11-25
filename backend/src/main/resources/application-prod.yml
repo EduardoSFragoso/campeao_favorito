@@ -19,7 +19,7 @@ app:
   jwt:
     # sem default: se JWT_SECRET não estiver definida no ambiente, o boot falha (fail fast)
     secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS:604800000}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24h (antes 7d); override pela env JWT_EXPIRATION_MS
 
 logging:
   level:

@@ -43,6 +43,20 @@ class JwtServiceTest {
   }
 
   @Test
+  void tokenCarregaAVersaoDaSessaoDoUsuario() {
+    user.setTokenVer((short) 3);
+    JwtService svc = service();
+    String token = svc.issue(user);
+    assertEquals(3, svc.versaoDoToken(token));
+    assertEquals("42", svc.validate(token)); // round-trip de sempre continua valendo
+  }
+
+  @Test
+  void versaoDeTokenInvalidoENulo() {
+    assertNull(service().versaoDoToken("lixo"));
+  }
+
+  @Test
   void tokenExpiradoIvalido() {
     JwtService servicoExpirado = new JwtService(SECRET, -1000L, new MockEnvironment());
     String token = servicoExpirado.issue(user);

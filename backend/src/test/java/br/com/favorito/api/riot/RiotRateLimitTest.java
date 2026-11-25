@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.favorito.api.auth.JwtAuthFilter;
 import br.com.favorito.api.auth.JwtService;
+import br.com.favorito.api.auth.UserRepository;
 import br.com.favorito.api.common.RateLimiterDeJanela;
 import br.com.favorito.api.config.SecurityConfig;
 import br.com.favorito.api.config.TestPropertiesConfig;
@@ -51,6 +52,7 @@ class RiotRateLimitTest {
 
   @MockitoBean RiotService riotService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
+  @MockitoBean UserRepository users; // revisão de sessão do filtro (token_ver)
 
   /**
    * Relógio controlável: o limiter real é instanciado com ele, para os testes avançarem o tempo sem

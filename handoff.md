@@ -166,6 +166,12 @@ sudo systemctl restart campeao-favorito
   ingress/security list, procurar as outras máquinas que compartilham a mesma lista; depois da
   mudança, validar com `curl` externo e conferir o `monitor.yml` (`workflow_dispatch` para
   testar na hora).
+- **JwtAuthFilter em dobro**: se o filtro ficar como bean solto (`@Component`) registrado
+  também como servlet filter, no MockMvc ele pode rodar ANTES do proxy de segurança — o
+  `OncePerRequestFilter` marca "já filtrado", a cópia interna da cadeia pula, o
+  `SecurityContextHolderFilter` zera o contexto e toda rota protegida dá 403 mudo. O
+  `SecurityConfig` já desliga o registro solto (`FilterRegistrationBean` `enabled=false`);
+  qualquer filtro novo de segurança vale a mesma receita.
 
 ## Histórico de correções (PRs 52–70, 2026-11-24)
 
@@ -209,14 +215,31 @@ Priorizadas — da mais urgente para a menos:
 4. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-5. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
-   é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
+5. **JWT: sem refresh token (opção B)** — restante da mitigação do antigo "7 dias sem
+   revogação". Alívio já na main (PR 87): expiração de 24h (override `JWT_EXPIRATION_MS`) e
+   revogação server-side por `token_ver` (logout real em `POST /api/auth/logout`). O
+   contratado pelo dono é implementar **B** numa branch `alt-main` (branchar da main DEPOIS
+   do merge do 87): refresh token com tabela própria, endpoint e renovação silenciosa no
+   interceptor. Plano simplificado deve ser apresentado ao dono antes.
 6. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- **JWT de 7 dias sem revogação — opções A + C** (decisão do dono "A + C na main, B na
+  alt-main"; PR 87): **A** expiração cai para 24h (`app.jwt.expiration-ms`,
+  override por `JWT_EXPIRATION_MS` em ambos os yml); **C** revogação server-side por versão
+  de sessão — migração `V3__token_ver.sql` (`users.token_ver SMALLINT NOT NULL DEFAULT 0`),
+  claim `ver` no JWT, `JwtAuthFilter` confronta o claim com o banco (versão divergente ou
+  usuário sumido = sem autenticação) e logout REAL em `POST /api/auth/logout`
+  (autenticado, `token_ver++` mata todo JWT emitido antes, qualquer dispositivo). Frontend:
+  `Auth.logout()` faz fire-and-forget via `fetch` FORA do `Auth` (HttpClient/interceptor)
+  para não haver laço de 401; o token antigo morre em 24h se o servidor não ouvir.
+  Ressalvas: tokens emitidos ANTES do deploy não têm o claim `ver` e deixam de autenticar
+  no primeiro boot pós-PR 87 (todos os usuários re-logam); tokens de 7d antigos não sobrevivem
+  ao filtro — a janela de 7d do token antigo acaba prática com a checagem de versão.
 
 - **Enumeração do `/register`** (escolha do dono: opção A, resposta genérica; PR 85): o
   endpoint responde 201 + mensagem ÚNICA para conta nova, pendente e confirmada — não revela

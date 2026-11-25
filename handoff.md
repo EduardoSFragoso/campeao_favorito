@@ -207,16 +207,17 @@ Priorizadas — da mais urgente para a menos:
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
 6. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-7. **Refatoração do `RiotService`** (350+ linhas, com resolução de conta duplicada) — pronta a
-   rede de segurança: caracterização em `RiotServiceCaracterizacaoTest` (7 pinos, vermelho com
-   mutação provada: chave sem `toUpperCase`). A refatoração pode atualizar os pinos
-   conscientemente.
-8. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+7. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- **Refatoração do `RiotService`** (PRs 83 e 84): rede de segurança primeiro
+  (`RiotServiceCaracterizacaoTest`, 7 pinos com mutação provada) e depois a extração da
+  resolução de conta duplicada (`resolverConta`) e da validação de entrada
+  (`validarEntradas`) — comportamento idêntico, 141 testes verdes sem tocar nos pinos.
 
 - **Verificação de e-mail no cadastro** (decisão do dono: 1b, SMTP com a conta dele, bloqueio
   de login até confirmar; PRs 80, 81 e 82): migração V2 `verificacao_email` (login de

@@ -83,7 +83,8 @@ class LoginRateLimiterForwardedTest {
 
   @Test
   void onzeLoginsDoMesmoXForwardedForViram429() throws Exception {
-    when(authService.login(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+    when(authService.login(any()))
+        .thenReturn(new AuthDtos.AuthResponse("jwt-mock", "refresh-mock", null));
 
     for (int i = 0; i < LoginRateLimiter.MAX_ATTEMPTS; i++) {
       loginCom("9.8.7.6");
@@ -93,7 +94,8 @@ class LoginRateLimiterForwardedTest {
 
   @Test
   void outroIpNoXForwardedForNaoHerdaOBloqueio() throws Exception {
-    when(authService.login(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+    when(authService.login(any()))
+        .thenReturn(new AuthDtos.AuthResponse("jwt-mock", "refresh-mock", null));
 
     for (int i = 0; i <= LoginRateLimiter.MAX_ATTEMPTS; i++) {
       try {
@@ -107,7 +109,8 @@ class LoginRateLimiterForwardedTest {
 
   @Test
   void loginsAtrasDoNginxSemHeaderFormamBucketProprio() throws Exception {
-    when(authService.login(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+    when(authService.login(any()))
+        .thenReturn(new AuthDtos.AuthResponse("jwt-mock", "refresh-mock", null));
 
     // tentativas sem XFF (bucket do loopback 127.0.0.1) não punem um IP real encaminhado
     for (int i = 0; i <= LoginRateLimiter.MAX_ATTEMPTS; i++) {
@@ -122,7 +125,8 @@ class LoginRateLimiterForwardedTest {
 
   @Test
   void primeiroIpDoXForwardedForEUsoComoBucket() throws Exception {
-    when(authService.login(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+    when(authService.login(any()))
+        .thenReturn(new AuthDtos.AuthResponse("jwt-mock", "refresh-mock", null));
 
     // cadeia "cliente, proxy1, proxy2": a strategy usa o primeiro à esquerda
     for (int i = 0; i < LoginRateLimiter.MAX_ATTEMPTS; i++) {

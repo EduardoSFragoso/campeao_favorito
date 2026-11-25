@@ -215,12 +215,15 @@ Priorizadas — da mais urgente para a menos:
 4. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-5. **JWT: sem refresh token (opção B)** — restante da mitigação do antigo "7 dias sem
-   revogação". Alívio já na main (PR 87): expiração de 24h (override `JWT_EXPIRATION_MS`) e
-   revogação server-side por `token_ver` (logout real em `POST /api/auth/logout`). O
-   contratado pelo dono é implementar **B** numa branch `alt-main` (branchar da main DEPOIS
-   do merge do 87): refresh token com tabela própria, endpoint e renovação silenciosa no
-   interceptor. Plano simplificado deve ser apresentado ao dono antes.
+5. **JWT/refresh: B entregue na branch `alt-main` (NÃO mergeada)** — decisão do dono: o
+   refresh token completo fica numa branch alternativa. Nela a sessão vira: login devolve
+   `{token, refreshToken, user}` (opaco, 30 dias, hash SHA-256 no banco — `V4__refresh_tokens.sql`),
+   `POST /api/auth/refresh` faz ROTAÇÃO (antigo revogado a cada troca) e o REUSO de um refresh
+   revogado derruba a sessão inteira (`token_ver++`); o logout revoga os refreshes; o
+   interceptor renova em silêncio no 401 protegido (uma promessa compartilhada — sem
+   tempestade de refreshes paralelos). Alívios que JÁ estão na main via PR 87: expiração de
+   24h e revogação por token_ver (logout real). Se um dia decidir trazê-la: branca nova da
+   `alt-main`, PR pequeno ou revisão do dono — NÃO inventar merge silencioso na main.
 6. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,

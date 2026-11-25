@@ -46,7 +46,8 @@ class CorridaRegisterTest {
     encoder = mock(PasswordEncoder.class);
     jwtService = mock(JwtService.class);
     verificacao = mock(VerificacaoEmailService.class);
-    service = new AuthService(users, encoder, jwtService, verificacao);
+    service =
+        new AuthService(users, encoder, jwtService, verificacao, mock(RefreshTokenService.class));
     when(encoder.encode(any())).thenReturn("hash");
   }
 
@@ -68,7 +69,12 @@ class CorridaRegisterTest {
         .thenThrow(br.com.favorito.api.support.ViolacaoDeBanco.em("users_email_key"));
 
     AuthService svc =
-        new AuthService(usersCorrida, encoder, jwtService, mock(VerificacaoEmailService.class));
+        new AuthService(
+            usersCorrida,
+            encoder,
+            jwtService,
+            mock(VerificacaoEmailService.class),
+            mock(RefreshTokenService.class));
 
     var req = new AuthDtos.RegisterRequest("corrida@exemplo.dev", "senha-forte-123", "Ana");
 

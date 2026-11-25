@@ -14,7 +14,9 @@ public record AuthDtos() {
 
   public record ReenvioRequest(@NotBlank @Email String email) {}
 
-  public record AuthResponse(String token, UserResponse user) {}
+  public record RefreshRequest(@NotBlank String refreshToken) {}
+
+  public record AuthResponse(String token, String refreshToken, UserResponse user) {}
 
   public record MensagemResponse(String message) {}
 

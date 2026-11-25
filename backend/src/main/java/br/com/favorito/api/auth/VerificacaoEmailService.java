@@ -1,13 +1,8 @@
 package br.com.favorito.api.auth;
 
 import br.com.favorito.api.common.EntradaInvalidaException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +25,6 @@ public class VerificacaoEmailService {
   private final VerificacaoEmailRepository tokens;
   private final UserRepository users;
   private final EmailEnviador email;
-  private final SecureRandom aleatorio = new SecureRandom();
 
   public VerificacaoEmailService(
       VerificacaoEmailRepository tokens, UserRepository users, EmailEnviador email) {
@@ -64,7 +58,7 @@ public class VerificacaoEmailService {
   public String verificar(String cru) {
     VerificacaoEmail pedido =
         tokens
-            .findByTokenHash(hash(cru))
+            .findByTokenHash(TokensOpacos.hash(cru))
             .filter(VerificacaoEmail::utilizavel)
             .orElseThrow(() ->
                 new EntradaInvalidaException(
@@ -98,23 +92,12 @@ public class VerificacaoEmailService {
   private void salvarToken(Long userId, String cru) {
     VerificacaoEmail pedido = new VerificacaoEmail();
     pedido.setUserId(userId);
-    pedido.setTokenHash(hash(cru));
+    pedido.setTokenHash(TokensOpacos.hash(cru));
     pedido.setExpiraEm(Instant.now().plus(TTL));
     tokens.save(pedido);
   }
 
   private String tokenCru() {
-    byte[] bytes = new byte[32];
-    aleatorio.nextBytes(bytes);
-    return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-  }
-
-  private static String hash(String cru) {
-    try {
-      MessageDigest sha = MessageDigest.getInstance("SHA-256");
-      return HexFormat.of().formatHex(sha.digest(cru.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 indisponível na JVM", e);
-    }
+    return TokensOpacos.novoCru();
   }
 }

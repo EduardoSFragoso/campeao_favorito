@@ -77,7 +77,8 @@ class AuthControllerTest {
 
   @Test
   void loginValidoSemRateLimitRetorna200() throws Exception {
-    when(authService.login(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+    when(authService.login(any()))
+        .thenReturn(new AuthDtos.AuthResponse("jwt-mock", "refresh-mock", null));
 
     mvc.perform(
             post("/api/auth/login")
@@ -142,5 +143,33 @@ class AuthControllerTest {
   void logoutSemTokenNaoChegaNoServico() throws Exception {
     mvc.perform(post("/api/auth/logout")).andExpect(status().is4xxClientError());
     verify(authService, never()).logout(anyLong());
+  }
+
+  @Test
+  void refreshValidoDevolveNovoPar() throws Exception {
+    when(authService.refresh(any()))
+        .thenReturn(
+            new AuthDtos.AuthResponse(
+                "jwt2", "ref2", new AuthDtos.UserResponse(7L, "a@b.dev", "Ana")));
+
+    mvc.perform(
+            post("/api/auth/refresh")
+                .contentType("application/json")
+                .content("{\"refreshToken\":\"ref-antigo\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.token").value("jwt2"))
+        .andExpect(jsonPath("$.refreshToken").value("ref2"))
+        .andExpect(jsonPath("$.user.id").value(7));
+  }
+
+  @Test
+  void refreshInvalidoE401() throws Exception {
+    when(authService.refresh(any())).thenThrow(new InvalidCredentialsException());
+
+    mvc.perform(
+            post("/api/auth/refresh")
+                .contentType("application/json")
+                .content("{\"refreshToken\":\"ref-morto\"}"))
+        .andExpect(status().isUnauthorized());
   }
 }

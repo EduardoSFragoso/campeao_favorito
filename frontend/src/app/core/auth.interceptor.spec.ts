@@ -128,11 +128,12 @@ describe('authInterceptor — sessão expirada/inválida (401/403)', () => {
   let auth: Auth;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
-  async function montar(): Promise<void> {
+  async function montar(opcoes?: { comRefresh?: boolean }): Promise<void> {
     localStorage.setItem(
       'cf_auth',
       JSON.stringify({
         token: tokenFalso(),
+        ...(opcoes?.comRefresh ? { refreshToken: 'ref-1' } : {}),
         user: { id: 1, email: 'teste@teste.dev', displayName: 'Teste' },
       }),
     );
@@ -177,7 +178,8 @@ describe('authInterceptor — sessão expirada/inválida (401/403)', () => {
 
     falhaComStatus('/api/favorites', 401);
 
-    expect(auth.token()).toBeNull();
+    // a saída passou por renovação (assíncrona) antes do logout — esperar
+    await vi.waitFor(() => expect(auth.token()).toBeNull());
     expect(auth.user()).toBeNull();
     expect(navigateByUrl).toHaveBeenCalledWith('/login');
   });
@@ -187,7 +189,7 @@ describe('authInterceptor — sessão expirada/inválida (401/403)', () => {
 
     falhaComStatus('/api/riot/rotation', 403);
 
-    expect(auth.token()).toBeNull();
+    await vi.waitFor(() => expect(auth.token()).toBeNull());
     expect(navigateByUrl).toHaveBeenCalledWith('/login');
   });
 
@@ -235,7 +237,84 @@ describe('authInterceptor — sessão expirada/inválida (401/403)', () => {
 
     falhaComStatus('/api/favorites', 401);
 
-    expect(auth.token()).toBeNull();
+    await vi.waitFor(() => expect(auth.token()).toBeNull());
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('401 protegido COM refreshToken renova em silêncio e repete a requisição com o token novo', async () => {
+    await montar({ comRefresh: true });
+
+    client.get(`${BASE_API}/api/favorites`).subscribe({ error: () => undefined });
+    // 1) a falha na protegida…
+    http
+      .expectOne(`${BASE_API}/api/favorites`)
+      .flush({ error: 'expirado' }, { status: 401, statusText: 'Unauthorized' });
+    // 2) …dispara a renovação com o refresh armazenado…
+    const refreshReq = http.expectOne(`${BASE_API}/api/auth/refresh`);
+    expect(refreshReq.request.body).toEqual({ refreshToken: 'ref-1' });
+    refreshReq.flush({
+      token: 'jwt-2',
+      refreshToken: 'ref-2',
+      user: { id: 1, email: 'teste@teste.dev', displayName: 'Teste' },
+    });
+    // 3) …e a requisição original reaparece com o JWT novo — sem logout nem /login
+    let repeticao!: import('@angular/common/http/testing').TestRequest;
+    await vi.waitFor(() => {
+      repeticao = http.expectOne(`${BASE_API}/api/favorites`);
+    });
+    repeticao.flush([]);
+    await vi.waitFor(() => expect(auth.token()).toBe('jwt-2'));
+    expect(auth.refreshToken()).toBe('ref-2');
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('renovação que falha (401 no /refresh) encerra a sessão e leva ao /login', async () => {
+    await montar({ comRefresh: true });
+
+    client.get(`${BASE_API}/api/favorites`).subscribe({ error: () => undefined });
+    http
+      .expectOne(`${BASE_API}/api/favorites`)
+      .flush({ error: 'expirado' }, { status: 401, statusText: 'Unauthorized' });
+    http
+      .expectOne(`${BASE_API}/api/auth/refresh`)
+      .flush({ error: 'refresh revogado' }, { status: 401, statusText: 'Unauthorized' });
+
+    await vi.waitFor(() => expect(auth.token()).toBeNull());
+    expect(navigateByUrl).toHaveBeenCalledWith('/login');
+  });
+
+  it('tempestade de 401s em paralelo dispara UMA renovação só (compartilhada)', async () => {
+    await montar({ comRefresh: true });
+
+    const falhar = (url: string) => {
+      client.get(`${BASE_API}${url}`).subscribe({ error: () => undefined });
+      http.expectOne(`${BASE_API}${url}`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    };
+    falhar('/api/favorites');
+    falhar('/api/riot/masteries');
+
+    // UMA chamada de refresh: a renovação é compartilhada entre as falhas
+    const refreshReq = http.expectOne(`${BASE_API}/api/auth/refresh`);
+    refreshReq.flush({
+      token: 'jwt-2',
+      refreshToken: 'ref-2',
+      user: { id: 1, email: 'teste@teste.dev', displayName: 'Teste' },
+    });
+
+    // as duas repetições saem com o MESMO token novo — evidência de que ambas esperaram a mesma
+    let repeticao1!: import('@angular/common/http/testing').TestRequest;
+    let repeticao2!: import('@angular/common/http/testing').TestRequest;
+    await vi.waitFor(() => {
+      repeticao1 = http.expectOne(`${BASE_API}/api/favorites`);
+    });
+    await vi.waitFor(() => {
+      repeticao2 = http.expectOne(`${BASE_API}/api/riot/masteries`);
+    });
+    repeticao1.flush([]);
+    repeticao2.flush([]);
+    expect(repeticao1.request.headers.get('Authorization')).toBe('Bearer jwt-2');
+    expect(repeticao2.request.headers.get('Authorization')).toBe('Bearer jwt-2');
+    expect(auth.token()).toBe('jwt-2');
     expect(navigateByUrl).not.toHaveBeenCalled();
   });
 });

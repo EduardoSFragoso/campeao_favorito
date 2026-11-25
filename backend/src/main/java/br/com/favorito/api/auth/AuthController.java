@@ -60,6 +60,15 @@ public class AuthController {
   }
 
   /**
+   * Refresh da sessão longa (público: a credencial é o refreshToken no corpo). Rotação: o antigo
+   * morre a cada troca; reuso devolve 401 e derruba a sessão inteira.
+   */
+  @PostMapping("/refresh")
+  public AuthDtos.AuthResponse refresh(@Valid @RequestBody AuthDtos.RefreshRequest req) {
+    return authService.refresh(req);
+  }
+
+  /**
    * Revoga a sessão no servidor (token_ver++); o cliente descarta o token local. 204, sem corpo.
    */
   @PostMapping("/logout")

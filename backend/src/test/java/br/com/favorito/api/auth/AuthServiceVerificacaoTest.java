@@ -28,6 +28,7 @@ class AuthServiceVerificacaoTest {
 
   private User user(String email, boolean verificado) {
     User u = new User();
+    u.setId(1L); // login/refresh emitem refresh por userId — precisa de id
     u.setEmail(email);
     u.setDisplayName("Ana");
     u.setPasswordHash("hash");
@@ -41,7 +42,7 @@ class AuthServiceVerificacaoTest {
     encoder = mock(PasswordEncoder.class);
     jwt = mock(JwtService.class);
     verificacao = mock(VerificacaoEmailService.class);
-    service = new AuthService(users, encoder, jwt, verificacao);
+    service = new AuthService(users, encoder, jwt, verificacao, mock(RefreshTokenService.class));
   }
 
   @Test

@@ -77,6 +77,54 @@ describe('Auth — cadastro sem login automático (verificação de e-mail)', ()
     expect(msg).toBe('E-mail confirmado — já pode entrar.');
   });
 
+  it('login devolve e ARMAZENA token e refreshToken (sessão longa, opção B)', async () => {
+    await montarComBase();
+
+    const promise = service.login('ana@teste.dev', 'senhaforte1');
+    http.expectOne(`${BASE_API}/api/auth/login`).flush({
+      token: 'jwt-1',
+      refreshToken: 'ref-1',
+      user: { id: 7, email: 'ana@teste.dev', displayName: 'Ana' },
+    });
+    await promise;
+
+    expect(service.token()).toBe('jwt-1');
+    expect(service.refreshToken()).toBe('ref-1');
+    expect(JSON.parse(localStorage.getItem('cf_auth') as string).refreshToken).toBe('ref-1');
+  });
+
+  it('renovar() troca o par no /api/auth/refresh e devolve true', async () => {
+    await montarComBase();
+    const promise = service.login('ana@teste.dev', 'senhaforte1');
+    http.expectOne(`${BASE_API}/api/auth/login`).flush({
+      token: 'jwt-1',
+      refreshToken: 'ref-1',
+      user: { id: 7, email: 'ana@teste.dev', displayName: 'Ana' },
+    });
+    await promise;
+
+    const renovacao = service.renovar();
+    const req = http.expectOne(`${BASE_API}/api/auth/refresh`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ refreshToken: 'ref-1' });
+    req.flush({
+      token: 'jwt-2',
+      refreshToken: 'ref-2',
+      user: { id: 7, email: 'ana@teste.dev', displayName: 'Ana' },
+    });
+
+    await expect(renovacao).resolves.toBe(true);
+    expect(service.token()).toBe('jwt-2');
+    expect(service.refreshToken()).toBe('ref-2');
+  });
+
+  it('renovar() sem refresh armazenado devolve false e NÃO chama o servidor', async () => {
+    await montarComBase();
+    // sessionStorage vazio: nenhum login nesta bateria (cf_auth removido no montarComBase)
+    await expect(service.renovar()).resolves.toBe(false);
+    http.verify(); // nenhuma chamada pendente além da de config
+  });
+
   it('logout com sessão revoga no servidor por fetch (fora do interceptor) e limpa o local', async () => {
     await montarComBase();
     const fetchMock = vi.fn(() => Promise.resolve({ ok: true } as Response));

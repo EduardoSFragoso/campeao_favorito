@@ -25,6 +25,7 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final VerificacaoEmailService verificacao;
+  private final RefreshTokenService refreshTokens;
 
   /**
    * SEM @Transactional de propósito: quem perde a corrida em users_email_key toma DIVE numa
@@ -78,13 +79,28 @@ public class AuthService {
     if (!user.isEmailVerificado()) {
       throw new EmailNaoVerificadoException();
     }
-    return new AuthDtos.AuthResponse(jwtService.issue(user), AuthDtos.UserResponse.from(user));
+    return new AuthDtos.AuthResponse(
+        jwtService.issue(user),
+        refreshTokens.emitir(user.getId()),
+        AuthDtos.UserResponse.from(user));
+  }
+
+  /**
+   * Refresh (sessão longa): troca um refresh válido por um NOVO par (JWT + refresh rotacionado).
+   * Reuso/expiração/disparates recebem 401 — e reuso derruba a sessão inteira lá no {@link
+   * RefreshTokenService}.
+   */
+  public AuthDtos.AuthResponse refresh(AuthDtos.RefreshRequest req) {
+    RefreshTokenService.Renovacao renovacao = refreshTokens.trocar(req.refreshToken());
+    User user = users.findById(renovacao.userId()).orElseThrow(InvalidCredentialsException::new);
+    return new AuthDtos.AuthResponse(
+        jwtService.issue(user), renovacao.novoRefreshToken(), AuthDtos.UserResponse.from(user));
   }
 
   /**
    * Logout de verdade: incrementa a versão da sessão do usuário — todos os JWT emitidos antes
-   * (qualquer dispositivo) deixam de autenticar no JwtAuthFilter. Sem lista de sessões: um número
-   * por usuário. Nada é emitido de volta; o cliente descarta o próprio token.
+   * (qualquer dispositivo) deixam de autenticar no JwtAuthFilter — e revoga todos os refreshes.
+   * Nada é emitido de volta; o cliente descarta os próprios tokens.
    */
   public void logout(long userId) {
     users
@@ -93,5 +109,6 @@ public class AuthService {
           user.setTokenVer((short) (user.getTokenVer() + 1));
           users.save(user);
         });
+    refreshTokens.revogarTodosDoUsuario(userId);
   }
 }

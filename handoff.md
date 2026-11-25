@@ -208,10 +208,12 @@ Priorizadas — da mais urgente para a menos:
 6. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
 7. **Verificação de e-mail no cadastro** — em andamento (decisão do dono: 1b, SMTP com conta
-   dele, com bloqueio de login até confirmar). Fluxo e migração já prontos (V2
-   `verificacao_email`, login 403, `/api/auth/verificar` e `/reenviar-verificacao`); faltam o
-   transporte SMTP real e a tela no frontend. A enumeração (pendência 5) continua mitigada
-   por rate limit — a verificação não altera a resposta 409.
+   dele, bloqueio de login até confirmar). Fluxo e migração prontos (PR 80: V2
+   `verificacao_email`, login 403, `/api/auth/verificar`, `/reenviar-verificacao`) e o
+   transporte por SMTP também (PR: `spring-boot-starter-mail`, ligue com as vars
+   `SMTP_HOST/PORT/USER/PASSWORD/FROM/AUTH` no EnvironmentFile da VM — sem `SMTP_HOST` o
+   link sai no log). Falta só a tela no frontend (PR 3). A enumeração (pendência 5)
+   continua mitigada por rate limit — a verificação não altera a resposta 409.
 8. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
    testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
 9. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado

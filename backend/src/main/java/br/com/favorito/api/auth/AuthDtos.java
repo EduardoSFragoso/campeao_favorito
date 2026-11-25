@@ -16,12 +16,6 @@ public record AuthDtos() {
 
   public record AuthResponse(String token, UserResponse user) {}
 
-  /**
-   * Resposta do cadastro: NÃO autentica (JWT só depois do e-mail confirmado, no login) e a mensagem
-   * orienta o próximo passo.
-   */
-  public record CadastroResponse(UserResponse user, String message) {}
-
   public record MensagemResponse(String message) {}
 
   public record UserResponse(Long id, String email, String displayName) {

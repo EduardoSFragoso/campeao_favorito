@@ -106,10 +106,11 @@ class CorridaBancoRealTest {
                 authService.register(
                     new AuthDtos.RegisterRequest(email, "senha-forte-123", "Dup")));
 
-    long criados = resultados.stream().filter(CorridaBancoRealTest::venceu).count();
-    long falhados = resultados.size() - criados;
-    assertEquals(1, criados, "só um register pode vencer: " + resultados);
-    assertEquals(1, falhados, "o outro register tem de falhar: " + resultados);
+    // anti-enumeração (opção A): NINGUÉM toma exceção — os dois recebem a mesma resposta
+    // genérica; o UNIQUE do banco garante que só UMA linha foi criada
+    long excecoes = resultados.stream().filter(r -> r instanceof Throwable).count();
+    assertEquals(0, excecoes, "register não pode mais lançar 409/duplicata: " + resultados);
+    assertEquals(resultados.get(0), resultados.get(1), "respostas idênticas aos dois corredores");
     assertEquals(1, users.findByEmailIgnoreCase(email).stream().count(), "UNIQUE de users.email");
 
     limparUsuarios(List.of(email));

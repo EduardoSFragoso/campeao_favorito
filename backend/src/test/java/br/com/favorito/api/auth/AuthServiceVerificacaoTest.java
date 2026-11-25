@@ -45,18 +45,31 @@ class AuthServiceVerificacaoTest {
   }
 
   @Test
-  @DisplayName("register entra NÃO verificado e a resposta NÃO carrega JWT")
+  @DisplayName("register entra NÃO verificado, resposta genérica SEM JWT e SEM dados da conta")
   void registerNaoAutentica() {
-    when(users.existsByEmailIgnoreCase(any())).thenReturn(false);
+    when(users.findByEmailIgnoreCase(any()))
+        .thenReturn(java.util.Optional.empty()); // e-mail ainda não existe
     when(users.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    AuthDtos.CadastroResponse res =
-        service.register(new AuthDtos.RegisterRequest("ana@exemplo.dev", "12345678", "Ana"));
+    var res = service.register(new AuthDtos.RegisterRequest("ana@exemplo.dev", "12345678", "Ana"));
 
-    assertInstanceOf(AuthDtos.CadastroResponse.class, res);
-    assertEquals("ana@exemplo.dev", res.user().email());
+    assertInstanceOf(AuthDtos.MensagemResponse.class, res);
+    assertEquals(AuthService.MENSAGEM_REGISTER, res.message());
     // o envio do e-mail é passo obrigatório do cadastro
     org.mockito.Mockito.verify(verificacao).criar(any());
+  }
+
+  @Test
+  @DisplayName("corrida perdida (users_email_key): MESMA resposta genérica — sem 409, sem dados")
+  void registerPerdedorDaCorridaTemMesmaResposta() {
+    when(users.findByEmailIgnoreCase(any()))
+        .thenReturn(java.util.Optional.empty()); // janela da corrida: visto antes do INSERT
+    when(users.saveAndFlush(any()))
+        .thenThrow(br.com.favorito.api.support.ViolacaoDeBanco.em("users_email_key"));
+
+    var res = service.register(new AuthDtos.RegisterRequest("ana@exemplo.dev", "12345678", "Ana"));
+
+    assertEquals(AuthService.MENSAGEM_REGISTER, res.message());
   }
 
   @Test

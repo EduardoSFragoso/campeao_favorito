@@ -9,10 +9,9 @@ import { Auth } from './auth.service';
 /** Base fictícia configurável via config.json stubado. */
 const BASE_API = 'https://api.campeao-favorito.dev';
 
-/** Resposta do cadastro pós-verificação de e-mail: usuário CRIADO, mas NÃO autenticado. */
+/** Resposta do cadastro (anti-enumeração): mensagem genérica, sem token nem dados da conta. */
 const CADASTRO_RESPOSTA = {
-  user: { id: 1, email: 'ana@teste.dev', displayName: 'Ana' },
-  message: 'Conta criada! Confirme o e-mail antes de entrar.',
+  message: 'Se este e-mail for novo, enviamos um link de confirmação. Confira a caixa de entrada.',
 };
 
 describe('Auth — cadastro sem login automático (verificação de e-mail)', () => {

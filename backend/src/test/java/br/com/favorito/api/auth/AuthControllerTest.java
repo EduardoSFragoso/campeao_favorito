@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.favorito.api.common.DuplicateResourceException;
 import br.com.favorito.api.common.InvalidCredentialsException;
 import br.com.favorito.api.config.SecurityConfig;
 import br.com.favorito.api.config.TestPropertiesConfig;
@@ -47,11 +46,9 @@ class AuthControllerTest {
   @MockitoBean VerificacaoEmailService verificacao;
 
   @Test
-  void registerValidoRetorna201SemTokenEComInstrucaoDeVerificar() throws Exception {
+  void registerValidoRetorna201SemTokenNemUserEComInstrucaoDeVerificar() throws Exception {
     when(authService.register(any()))
-        .thenReturn(
-            new AuthDtos.CadastroResponse(
-                new AuthDtos.UserResponse(1L, "a@b.dev", "Ana"), "Verifique o e-mail."));
+        .thenReturn(new AuthDtos.MensagemResponse("Verifique o e-mail."));
 
     mvc.perform(
             post("/api/auth/register")
@@ -60,6 +57,7 @@ class AuthControllerTest {
                     "{\"email\":\"a@b.dev\",\"password\":\"12345678\",\"displayName\":\"Ana\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.token").doesNotExist())
+        .andExpect(jsonPath("$.user").doesNotExist()) // nada de dados da conta em duplicata
         .andExpect(jsonPath("$.message").value("Verifique o e-mail."));
   }
 
@@ -109,20 +107,6 @@ class AuthControllerTest {
                 .content("{\"email\":\"a@b.dev\",\"password\":\"errada1234\"}"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.error").value("E-mail ou senha inválidos."));
-  }
-
-  @Test
-  void registerComEmailDuplicadoRetorna409Nao500() throws Exception {
-    when(authService.register(any()))
-        .thenThrow(new DuplicateResourceException("E-mail já cadastrado."));
-
-    mvc.perform(
-            post("/api/auth/register")
-                .contentType("application/json")
-                .content(
-                    "{\"email\":\"a@b.dev\",\"password\":\"12345678\",\"displayName\":\"Ana\"}"))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.error").value("E-mail já cadastrado."));
   }
 
   @Test

@@ -7,7 +7,8 @@ import { Backend } from '../../core/backend.service';
 import { Auth } from '../../core/auth.service';
 import { AuthPage } from './auth';
 
-const MSG_CONFIRMACAO = 'Conta criada! Confirme o e-mail antes de entrar.';
+const MSG_CONFIRMACAO =
+  'Se este e-mail for novo, enviamos um link de confirmação. Confira a caixa de entrada.';
 
 /** Acessa membros protected da página (só o template os usa em produção). */
 function interna(p: AuthPage): {

@@ -15,9 +15,8 @@ interface AuthResponse {
   user: CfUser;
 }
 
-/** Resposta do cadastro pós-verificação de e-mail: usuário criado, mas NÃO autenticado. */
+/** Resposta do cadastro (anti-enumeração): mensagem genérica, SEM token e SEM dados da conta. */
 interface CadastroResponse {
-  user: CfUser;
   message: string;
 }
 

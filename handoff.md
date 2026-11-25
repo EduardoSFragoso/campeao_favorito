@@ -203,16 +203,22 @@ Priorizadas — da mais urgente para a menos:
 4. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-5. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
-   enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
-6. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
+5. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-7. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+6. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- **Enumeração do `/register`** (escolha do dono: opção A, resposta genérica; PR 85): o
+  endpoint responde 201 + mensagem ÚNICA para conta nova, pendente e confirmada — não revela
+  mais e-mail existente (o 409 sumiu). Conta pendente recebe link novo no cadastro (rate limit
+  de 5/min por IP segue, por causa do reenvio de e-mail); corrida decidida pelo UNIQUE do
+  banco, perdedor com a mesma resposta. Residual: o login com 403 "Confirme o e-mail" só
+  acontece com senha correta — enumeração pela tela de login exige saber a senha, risco
+  aceito.
 
 - **Refatoração do `RiotService`** (PRs 83 e 84): rede de segurança primeiro
   (`RiotServiceCaracterizacaoTest`, 7 pinos com mutação provada) e depois a extração da

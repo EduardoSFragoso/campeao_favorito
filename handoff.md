@@ -36,9 +36,15 @@ cd backend && ./mvnw -B package -DskipTests
 cd frontend && npx prettier --write . && npm run lint && npx ng test --watch=false && npx ng build
 
 # Deploy backend na VM (eden-server) — jar via SFTP para /tmp primeiro
+# o jar anterior é preservado em app.jar.bak para rollback imediato
+sudo mv /opt/campeao-favorito/app.jar /opt/campeao-favorito/app.jar.bak
 sudo mv /tmp/api-0.0.1-SNAPSHOT.jar /opt/campeao-favorito/app.jar
 sudo systemctl restart campeao-favorito
 sudo journalctl -u campeao-favorito -n 20 --no-pager
+
+# Rollback — devolver o jar imediatamente anterior e reiniciar
+sudo mv /opt/campeao-favorito/app.jar.bak /opt/campeao-favorito/app.jar
+sudo systemctl restart campeao-favorito
 ```
 
 ## Contratos que não podem quebrar
@@ -68,7 +74,16 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   API: com CDN ou outro proxy, revisar o vhost e a strategy. O vhost ativo é a **cópia**
   em `/etc/nginx/sites-enabled/` (não é link para `sites-available`); o
   `/etc/nginx/proxy_params` tem `$proxy_add_x_forwarded_for`, mas não é incluído por este
-  vhost.
+  vhost. O trecho efetivo do vhost (sem host real — ver `docs/fase4-oracle-vm.md`):
+
+  ```nginx
+  proxy_pass http://127.0.0.1:8080;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $remote_addr;
+  proxy_set_header Forwarded "";
+  proxy_set_header X-Forwarded-Proto $scheme;
+  ```
 - **Rate limits (janela fixa por chave, em memória — motor único `RateLimiterDeJanela`)**:
   login 10/min por IP; register 5/min por IP; `/api/riot/**` 10/min POR USUÁRIO (id do token)
   MAIS um limite GLOBAL de 40/min para todas as rotas Riot juntas (chave fixa no mesmo motor;
@@ -125,8 +140,12 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 - Segredos nunca versionados: dev usa `backend/.env` (gitignored), produção usa o
   `EnvironmentFile=/etc/campeao-favorito.env` do systemd na VM (manutenção manual, permissão 600).
 - Backup do Neon: `backup-neon.yml` roda diário (+ _Run workflow_ manual), publica artifact `.gpg`
-  (30 dias). Secrets `NEON_DATABASE_URL` (conexão direta, sem `-pooler`) e `BACKUP_PASSPHRASE` no
-  Actions — a passphrase só existe com o dono; sem ela o artifact é lixo.
+  (30 dias). Antes de criptografar o job valida o dump com `pg_restore --list` e falha se o TOC
+  tiver menos de 3 entradas `TABLE DATA`; a chave do apt/pgdg vem por `curl -fsSL` com
+  fingerprint conferida (e o cliente Postgres vem na imagem quando possível). Actions fixadas por
+  SHA de commit. Secrets `NEON_DATABASE_URL` (conexão direta, sem `-pooler`) e `BACKUP_PASSPHRASE`
+  no Actions — a passphrase só existe com o dono; sem ela o artifact é lixo. Restauração já
+  validada em Postgres descartável (2026-11-24).
 
 ## Armadilhas conhecidas (já morderam)
 
@@ -142,7 +161,50 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
 - Restart da VM derruba a sessão SSH — reabrir terminal.
 - CRLF local no frontend quebra o `prettier --check`; a CI é a verdade.
 
+## Histórico de correções (PRs 52–70, 2026-11-24)
+
+Cada linha em uma frase; branch/main sempre pelo fluxo PR → Rebase and merge.
+
+| PR | O que corrigiu |
+|---|---|
+| #52 | Espelho do ruleset alinhado à API real e portão do merge corrigido (sem Codeowners, CI + revisão do dono). |
+| #53 | Supressão de CSRF justificada e blocklist de schemes no teste de segurança. |
+| #54 | Comentário da supressão do CodeQL movido para a linha do alerta. |
+| #55 | Docs com o estado real de infra (roles do Neon, VM, backup). |
+| #56 | Interceptor só anexa Bearer para URLs na base da API (nunca em hosts externos, ex. Community Dragon). |
+| #57 | Rede de segurança: rate limit, rota protegida sem token, corridas em register/favorites, chaves de cache. |
+| #58 | Caracteriza o `getRemoteAddr()` com o `ForwardedHeaderFilter` real (base da correção do rate limit). |
+| #59 | Docs: nginx sobrescreve `X-Forwarded-For` com `$remote_addr` e zera `Forwarded`. |
+| #60 | Guardas de entrada e teto de cache/locks no `RiotService`; interceptor usa `startsWith(base + '/')` (tolera `//host`). |
+| #61 | Rate limit: register 5/min por IP; `/api/riot/**` 30/min por usuário. |
+| #62 | Riot 10/min por usuário + limite global 40/min; platform normalizada; `gameName` exige alfanumérico; removes null-safe. |
+| #63 | `JwtService` recusa o placeholder e segredo < 32 bytes em qualquer perfil (exceto dev/test explícitos). |
+| #64 | 409 em duplicatas (register/favorites), rotation separada por platform e fim do usuário/senha padrão no log. |
+| #65 | Backup valida TOC do dump (≥3 `TABLE DATA`), fingerprint pgdg conferida e action fixada por SHA. |
+| #66 | Todas as actions restantes fixadas por SHA de commit, tag no comentário. |
+| #67 | Frontend: 401/403 da API limpa sessão e leva ao login, sem laço e sem afetar login/register. |
+| #68 | 409 só para a constraint esperada (`users_email_key`/`uk_user_champion`, lida na causa); outras violações seguem 500. |
+| #69 | Colisão determinística no Postgres real prova os nomes das constraints na exceção registrada por #68. |
+| #70 | DTOs da Riot toleram `null` numérico (AS_EMPTY) e erro de rede/leitura do `RiotClient` vira 502 genérico. |
+
 ## Pendências / próximos passos
+
+Priorizadas — da mais urgente para a menos:
+
+1. **Chave de produção pessoal da Riot** — com ela o elo ranqueado volta a ser exibido (o
+   degrade já está pronto). Rascunho em `docs/riot-personal-key-application.md`.
+2. **Qualquer CDN/proxy novo na frente da API** — reavaliar a sobrescrita de
+   `X-Forwarded-For`/`Forwarded` do vhost e a strategy `framework` (os três rate limits por IP
+   dependem disso; hoje é seguro só enquanto o nginx for o único proxy).
+3. **Suíte de banco real no dev local** — os testes de `CorridaBancoRealTest` ficam skipped sem
+   `DB_URL`; subir um Postgres descartável local (container) facilitaria a rede de segurança
+   fora da CI.
+4. **Rotação periódica da chave da Riot e do `JWT_SECRET`** — processo manual hoje; documentar
+   janela e passos no runbook quando virar operação de fato.
+5. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; se um
+   dia o `Require code scanning results` entrar no ruleset, revisar tempos de análise.
+
+## Pendências resolvidas (arquivo)
 
 - **Auditoria de infra concluída em 2026-11-23** — `docs/auditoria-infra.md` com todas as seções
   verificadas: Neon (role mínima + Flyway em produção), VM (portas, env 600, SSH só chave,
@@ -154,5 +216,3 @@ sudo journalctl -u campeao-favorito -n 20 --no-pager
   tabelas, usada pelo Flyway e pela aplicação) e `campeao_backup` (só leitura, usada pelo backup);
   backup do Neon restaurado e validado em Postgres descartável; VM sem endereço IPv6 global e
   sem nenhum contêiner Docker em execução.
-- Com chave de produção pessoal da Riot, o elo ranqueado volta a ser exibido (o degrade
-  já está pronto).

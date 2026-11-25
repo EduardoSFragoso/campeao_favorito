@@ -19,15 +19,15 @@ public class FavoriteController {
 
   @Operation(summary = "Lista os favoritos do usuário autenticado")
   @GetMapping
-  public List<Favorite> list() {
-    return service.listMine();
+  public List<FavoriteDtos.FavoriteResponse> list() {
+    return service.listMine().stream().map(FavoriteDtos.FavoriteResponse::de).toList();
   }
 
   @Operation(summary = "Favorita um campeão")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public Favorite add(@Valid @RequestBody FavoriteDtos.FavoriteRequest req) {
-    return service.add(req);
+  public FavoriteDtos.FavoriteResponse add(@Valid @RequestBody FavoriteDtos.FavoriteRequest req) {
+    return FavoriteDtos.FavoriteResponse.de(service.add(req));
   }
 
   @Operation(summary = "Remove um campeão dos favoritos")

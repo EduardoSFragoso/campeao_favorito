@@ -218,6 +218,14 @@ Priorizadas — da mais urgente para a menos:
    têm a mesma tolerância.
 10. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
     é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
+11. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
+    Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
+12. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
+    revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
+13. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+    testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
+14. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional da VM;
+    não altera o app, só o acesso de administração.
 
 ## Pendências resolvidas (arquivo)
 

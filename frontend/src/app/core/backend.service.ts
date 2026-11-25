@@ -5,10 +5,9 @@ import { ApiUrl } from './api-url.service';
 import { Auth } from './auth.service';
 import type { MasteryEntry } from './summoner-store.service';
 
-/** Favorito conforme a tabela do Neon (via backend). */
+/** Favorito como o backend devolve (DTO público — nunca colunas internas como userId). */
 export interface CfFavorite {
   id: number;
-  userId: number;
   championId: string;
   championName: string;
   title?: string;

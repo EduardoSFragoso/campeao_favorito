@@ -49,21 +49,26 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(Map.of("error", msg));
   }
 
-  /** Argumento rejeitado na camada de domínio (platform fora da whitelist, p.ex.). */
+  /**
+   * Argumento rejeitado na camada de domínio (platform fora da whitelist, p.ex.). A mensagem
+   * original pode carregar detalhe de validação interna — log sim, resposta genérica.
+   */
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException e) {
-    return ResponseEntity.badRequest()
-        .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Requisição inválida."));
+    log.warn("IllegalArgumentException: {}", e.getMessage());
+    return ResponseEntity.badRequest().body(Map.of("error", "Requisição inválida."));
   }
 
   /**
    * Rota inexistente (ex.: springdoc desligado em produção): 404 limpo — sem o catch-all abaixo,
-   * cairia como 500 e mascararia o diagnóstico.
+   * cairia como 500 e mascararia o diagnóstico. O caminho vai só para o log (ecoar a rota de volta
+   * permitiria mapear a API varejando caminhos).
    */
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<Map<String, Object>> noResource(NoResourceFoundException e) {
+    log.warn("404 recurso não encontrado: {}", e.getResourcePath());
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(Map.of("error", "Rota não encontrada: " + e.getResourcePath()));
+        .body(Map.of("error", "Rota não encontrada."));
   }
 
   /**

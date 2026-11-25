@@ -7,27 +7,28 @@ da **Riot Games API** — elo ranqueado, nível e top maestria.
 ## Arquitetura
 
 ```
-┌─────────────────────┐        ┌──────────────────────────┐        ┌───────────────┐
-│  GitHub Pages       │  HTTP  │  Spring Boot (backend/)  │  JDBC  │  Neon         │
-│  Angular 22 (SPA)   │ ─────▶ │  Java 25 · JWT · Swagger │ ─────▶ │  Postgres     │
-└─────────┬───────────┘        └────────────┬─────────────┘        └───────────────┘
-          │   splasharts/lore   (CDN direta, sem chave)
-          ▼
+┌─────────────────────┐  HTTPS  ┌──────────────────────────┐        ┌───────────────┐
+│  GitHub Pages       │ ──────▶ │   nginx (TLS, reverse    │  JDBC  │  Neon         │
+│  Angular 22 (SPA)   │         │   proxy) → Spring Boot   │ ─────▶ │  Postgres     │
+└─────────┬───────────┘         │   (backend/, Java 25)    │        └───────────────┘
+          │   splasharts/lore   └────────────┬─────────────┘
+          ▼   (CDN direta, sem chave)
    Data Dragon (ddragon.leagueoflegends.com)
 ```
 
 | Camada | Tecnologia | Onde roda |
 |---|---|---|
 | Frontend | Angular 22 (signals, standalone) | GitHub Pages (estático) |
-| Backend | Spring Boot 4.2 · Java 25 · Lombok · springdoc OpenAPI | **VM Oracle Cloud Free Tier** (produção, HTTPS) + local (8080) em dev |
+| Backend | Spring Boot 4.2 · Java 25 · Lombok · springdoc OpenAPI · JWT | **VM Oracle Cloud Free Tier** (produção, nginx + TLS + systemd) + local (8080) em dev |
 | Banco | PostgreSQL 17 serverless | Neon (free tier) |
 | Dados de jogo | Data Dragon (sem chave) + Riot API (com chave) | CDN / externo |
 
-> **Em produção:** app em `https://eduardosfragoso.github.io/campeao_favorito/` e backend em
-> `https://147-15-57-6.sslip.io` (VM Oracle Cloud, Ubuntu + systemd + nginx/TLS — a saga completa
-> do deploy está em [docs/fase4-oracle-vm.md](docs/fase4-oracle-vm.md)). Tempo real (invocador,
-> elo, maestria) vem da Riot API; splasharts e infos de campeões vêm do **Data Dragon**, aberto
-> e ilimitado — a Riot API nunca é chamada para conteúdo estático.
+> **Em produção:** app em `https://eduardosfragoso.github.io/campeao_favorito/`; a URL pública do
+> backend é configurada na variável de repositório `API_URL` (VM Oracle Cloud, Ubuntu + systemd +
+> nginx/TLS — a saga completa do deploy está em
+> [docs/fase4-oracle-vm.md](docs/fase4-oracle-vm.md)). Tempo real (invocador, elo, maestria) vem
+> da Riot API; splasharts e infos de campeões vêm do **Data Dragon**, aberto e ilimitado — a Riot
+> API nunca é chamada para conteúdo estático.
 
 ## Pré-requisitos
 
@@ -43,7 +44,9 @@ da **Riot Games API** — elo ranqueado, nível e top maestria.
 3. Converta para JDBC (formato que o Spring espera):
    `jdbc:postgresql://ep-xxx-pooler-xxx.aws.neon.tech/neondb?sslmode=require`
 
-As tabelas (`users`, `favorites`) são criadas automaticamente no boot (`ddl-auto: update`).
+Preencha `backend/.env` (há um `.env.example` só com os nomes das variáveis). As tabelas
+(`users`, `favorites`) são criadas/atualizadas por **migrações Flyway versionadas**
+(`backend/src/main/resources/db/migration/` — fonte da verdade do esquema).
 
 ## 2. Chave da Riot API
 
@@ -93,11 +96,26 @@ npm start   # http://localhost:4200
 Em dev ele lê `frontend/public/config.json` apontando para `http://localhost:8080`.
 CORS já liberado para `http://localhost:4200` (variável `CORS_ALLOWED_ORIGINS`).
 
+## Testes
+
+```bash
+cd backend && ./mvnw -B spotless:apply && ./mvnw -B verify   # 109 testes; os de banco real exigem DB_URL (rodam na CI)
+cd frontend && npm run format:check && npm run lint && npx ng test --watch=false && npx ng build
+```
+
+## Segurança e CI (resumo)
+
+- JWT em todas as rotas (exceto `auth`/`health`/`error`), rate limit por IP nos endpoints de
+  auth e por usuário+global nas rotas da Riot, validação de entrada antes de tocar a Riot API.
+- CI: backend (verify + spotless) e frontend (lint + build) como checks obrigatórios do PR, com
+  Postgres efêmero para migration do zero; CodeQL e Dependabot ativos; Actions fixadas por SHA.
+- Detalhes operacionais, armadilhas e estado de infra: [`handoff.md`](handoff.md) e
+  [`docs/auditoria-infra.md`](docs/auditoria-infra.md).
+
 ## 5. Publicar no GitHub Pages
 
 1. Suba o repositório e ative *Settings → Pages → Source: GitHub Actions*.
-2. Crie a variável de repositório `API_URL` com a URL **pública** do backend
-   (hoje: `https://147-15-57-6.sslip.io`) —
+2. Crie a variável de repositório `API_URL` com a URL **pública** do backend —
    o workflow reescreve `config.json` no deploy.
 3. Push em `main` → o workflow [deploy-gh-pages.yml](.github/workflows/deploy-gh-pages.yml)
    faz build com `--base-href "/<repo>/"` e publica.
@@ -113,7 +131,9 @@ O backend roda em uma **VM Oracle Cloud Always Free** (E2.1.Micro, Ubuntu) com:
 - **nginx** como reverse proxy (8080 → 443) com **TLS-ALPN via acme.sh**
   (a porta 80 é dropada a montante pela OCI, então o certificado usa desafio TLS-ALPN na 443).
 - Deploy: build local (`./mvnw -B package -DskipTests`) → SFTP do jar para `/tmp` na VM →
-  `sudo mv` para `/opt/campeao-favorito/app.jar` → `sudo systemctl restart campeao-favorito`.
+  `sudo mv` preservando o jar anterior em `/opt/campeao-favorito/app.jar.bak` →
+  `sudo systemctl restart campeao-favorito`. **Rollback** = devolver o `app.jar.bak` para
+  `app.jar` e reiniciar (passos exatos no `handoff.md`).
 
 O passo a passo completo (firewall, Security List, certificados, troubleshooting da Riot API)
 está em [docs/fase4-oracle-vm.md](docs/fase4-oracle-vm.md).

@@ -160,65 +160,84 @@ public class RiotService {
     return p;
   }
 
-  public RiotDtos.SummonerProfile summonerProfile(
-      String gameName, String tagLine, String platform) {
+  /** Entrada já validada e normalizada, pronta para virar chave de cache e consulta à Riot. */
+  private record EntradaValidada(
+      String gameName, String tagLine, String plataforma, String chave) {}
+
+  private static EntradaValidada validarEntradas(String gameName, String tagLine, String platform) {
     String gn =
         exigirTextoValido(
             gameName,
             "gameName: 1–32 caracteres: letras, números, espaço, . _ ' -; ao menos um alfanumérico");
     String tl = exigirTagValida(tagLine);
     String plataforma = normalizarPlataforma(platform);
-    String key = gn.toUpperCase() + "#" + tl.toUpperCase();
+    String chave = gn.toUpperCase() + "#" + tl.toUpperCase();
+    return new EntradaValidada(gn, tl, plataforma, chave);
+  }
+
+  /**
+   * A resolução de conta (Account-V1 por riot-id) é o mesmo bloco em summonerProfile e masteries —
+   * extraído aqui para existir em UM lugar. 404 vira mensagem de "confira nome/tag/região"; corpo
+   * sem puuid, idem. Outros status sobem como vieram.
+   */
+  private RiotDtos.RiotAccount resolverConta(EntradaValidada e) {
+    RiotDtos.RiotAccount account;
+    try {
+      account =
+          client.getRegional(
+              e.plataforma(),
+              "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
+              RiotDtos.RiotAccount.class,
+              e.gameName(),
+              e.tagLine());
+    } catch (RiotApiException ex) {
+      if (ex.upstreamStatus == 404) {
+        throw new RiotApiException(
+            404,
+            "Conta \""
+                + e.chave()
+                + "\" não encontrada — confira nome, tag e região (?platform=).");
+      }
+      throw ex;
+    }
+    if (account == null || account.puuid() == null) {
+      throw new RiotApiException(
+          404,
+          "Conta \"" + e.chave() + "\" não encontrada — confira nome, tag e região (?platform=).");
+    }
+    return account;
+  }
+
+  public RiotDtos.SummonerProfile summonerProfile(
+      String gameName, String tagLine, String platform) {
+    EntradaValidada e = validarEntradas(gameName, tagLine, platform);
 
     return withCache(
-        "profile:" + plataforma + ":" + key,
+        "profile:" + e.plataforma() + ":" + e.chave(),
         () -> {
-          RiotDtos.RiotAccount account;
-          try {
-            account =
-                client.getRegional(
-                    plataforma,
-                    "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
-                    RiotDtos.RiotAccount.class,
-                    gn,
-                    tl);
-          } catch (RiotApiException e) {
-            if (e.upstreamStatus == 404) {
-              throw new RiotApiException(
-                  404,
-                  "Conta \""
-                      + key
-                      + "\" não encontrada — confira nome, tag e região (?platform=).");
-            }
-            throw e;
-          }
-          if (account == null || account.puuid() == null) {
-            throw new RiotApiException(
-                404,
-                "Conta \"" + key + "\" não encontrada — confira nome, tag e região (?platform=).");
-          }
+          RiotDtos.RiotAccount account = resolverConta(e);
 
           RiotDtos.RiotSummoner summoner;
           try {
             summoner =
                 client.getServer(
-                    plataforma,
+                    e.plataforma(),
                     "/lol/summoner/v4/summoners/by-puuid/{puuid}",
                     RiotDtos.RiotSummoner.class,
                     account.puuid());
-          } catch (RiotApiException e) {
-            if (e.upstreamStatus == 404) {
+          } catch (RiotApiException ex) {
+            if (ex.upstreamStatus == 404) {
               // a conta existe na Riot (Account-V1 achou o PUUID), mas não tem perfil de
               // LoL naquele servidor — diferente de "conta não encontrada" (que falha acima)
               throw new RiotApiException(
                   404,
                   "Conta \""
-                      + key
+                      + e.chave()
                       + "\" existe, mas não tem LoL no servidor \""
-                      + plataforma
+                      + e.plataforma()
                       + "\". Confira a região (?platform=).");
             }
-            throw e;
+            throw ex;
           }
 
           List<RiotDtos.LeagueEntry> ranked =
@@ -229,7 +248,7 @@ public class RiotService {
                     try {
                       RiotDtos.LeagueEntry[] arr =
                           client.getServer(
-                              plataforma,
+                              e.plataforma(),
                               // by-summoner foi removida da League-V4 (anúncio de jun/2025);
                               // a leitura do elo passou a ser por PUUID
                               "/lol/league/v4/entries/by-puuid/{puuid}",
@@ -237,19 +256,19 @@ public class RiotService {
                               account.puuid());
                       return arr == null
                           ? List.<RiotDtos.LeagueEntry>of()
-                          : List.of(arr).stream().filter(e -> e.games() > 0).toList();
-                    } catch (RiotApiException e) {
+                          : List.of(arr).stream().filter(ent -> ent.games() > 0).toList();
+                    } catch (RiotApiException ex) {
                       // League-V4 vem com 403 para chaves de dev/pessoais — degrada sem elo
                       // em vez de falhar o perfil inteiro. Com chave de produção volta a mostrar.
-                      if (e.upstreamStatus == 403 || e.upstreamStatus == 404) {
+                      if (ex.upstreamStatus == 403 || ex.upstreamStatus == 404) {
                         log.warn(
                             "Elo indisponível para {} na {} (HTTP {}) — perfil sem ranqueada.",
-                            key,
-                            plataforma,
-                            e.upstreamStatus);
+                            e.chave(),
+                            e.plataforma(),
+                            ex.upstreamStatus);
                         return List.<RiotDtos.LeagueEntry>of();
                       }
-                      throw e;
+                      throw ex;
                     }
                   });
 
@@ -261,7 +280,7 @@ public class RiotService {
                     query.put("count", 5);
                     RiotDtos.MasteryDto[] arr =
                         client.getServer(
-                            plataforma,
+                            e.plataforma(),
                             "/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top",
                             query,
                             RiotDtos.MasteryDto[].class,
@@ -287,45 +306,16 @@ public class RiotService {
    * — o payload só muda após partidas jogadas.
    */
   public List<RiotDtos.MasteryDto> masteries(String gameName, String tagLine, String platform) {
-    String gn =
-        exigirTextoValido(
-            gameName,
-            "gameName: 1–32 caracteres: letras, números, espaço, . _ ' -; ao menos um alfanumérico");
-    String tl = exigirTagValida(tagLine);
-    String plataforma = normalizarPlataforma(platform);
-    String key = gn.toUpperCase() + "#" + tl.toUpperCase();
+    EntradaValidada e = validarEntradas(gameName, tagLine, platform);
 
     return withCache(
-        "masteryAll:" + plataforma + ":" + key,
+        "masteryAll:" + e.plataforma() + ":" + e.chave(),
         () -> {
-          RiotDtos.RiotAccount account;
-          try {
-            account =
-                client.getRegional(
-                    plataforma,
-                    "/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}",
-                    RiotDtos.RiotAccount.class,
-                    gn,
-                    tl);
-          } catch (RiotApiException e) {
-            if (e.upstreamStatus == 404) {
-              throw new RiotApiException(
-                  404,
-                  "Conta \""
-                      + key
-                      + "\" não encontrada — confira nome, tag e região (?platform=).");
-            }
-            throw e;
-          }
-          if (account == null || account.puuid() == null) {
-            throw new RiotApiException(
-                404,
-                "Conta \"" + key + "\" não encontrada — confira nome, tag e região (?platform=).");
-          }
+          RiotDtos.RiotAccount account = resolverConta(e);
 
           RiotDtos.MasteryDto[] arr =
               client.getServer(
-                  plataforma,
+                  e.plataforma(),
                   "/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}",
                   RiotDtos.MasteryDto[].class,
                   account.puuid());

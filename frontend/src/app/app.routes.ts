@@ -26,5 +26,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/auth/auth').then((m) => m.AuthPage),
     title: 'Entrar — Campeões Favoritos LOL',
   },
+  {
+    path: 'verificar',
+    loadComponent: () => import('./pages/verificar/verificar').then((m) => m.VerificarPage),
+    title: 'Confirmação de e-mail — Campeões Favoritos LOL',
+  },
   { path: '**', redirectTo: '' },
 ];

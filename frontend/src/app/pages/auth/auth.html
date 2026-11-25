@@ -21,8 +21,12 @@
       <p class="error">{{ msg }}</p>
     }
 
+    @if (info(); as msg) {
+      <p class="info">{{ msg }}</p>
+    }
+
     <button class="btn primary" type="submit" [disabled]="busy()">
-      {{ busy() ? 'Enviando…' : mode() === 'login' ? 'Entrar' : 'Criar conta e entrar' }}
+      {{ busy() ? 'Enviando…' : mode() === 'login' ? 'Entrar' : 'Criar conta' }}
     </button>
   </form>
 

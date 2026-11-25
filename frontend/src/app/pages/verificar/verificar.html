@@ -1,0 +1,18 @@
+<div class="auth-card verificar">
+  <h1>Confirmação de e-mail</h1>
+
+  @switch (status()) {
+    @case ('verificando') {
+      <p class="hint">{{ mensagem() }}</p>
+    }
+    @case ('ok') {
+      <p class="info">{{ mensagem() }}</p>
+      <a routerLink="/login" class="btn primary">Ir para o login</a>
+    }
+    @case ('erro') {
+      <p class="error">{{ mensagem() }}</p>
+      <p class="hint">O link pode ter expirado ou já ter sido usado.</p>
+      <a routerLink="/login" class="link">Voltar ao login</a>
+    }
+  }
+</div>

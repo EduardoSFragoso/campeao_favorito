@@ -25,23 +25,30 @@ export class AuthPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Mensagem de orientação pós-cadastro (verifique seu e-mail) exibida no modo login. */
+  protected readonly info = signal<string | null>(null);
 
   protected switchMode(): void {
     this.mode.set(this.mode() === 'login' ? 'register' : 'login');
     this.error.set(null);
+    this.info.set(null);
   }
 
   protected async submit(): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
+    this.info.set(null);
     try {
       if (this.mode() === 'login') {
         await this.auth.login(this.email, this.password);
+        this.backend.refreshFavorites();
+        this.router.navigate(['/']);
       } else {
-        await this.auth.register(this.email, this.password, this.displayName);
+        // cadastro não autentica (e-mail pendente de confirmação): mostra a orientação
+        // e volta ao login, onde a confirmação pode ser usada
+        this.info.set(await this.auth.register(this.email, this.password, this.displayName));
+        this.mode.set('login');
       }
-      this.backend.refreshFavorites();
-      this.router.navigate(['/']);
     } catch (e: unknown) {
       this.error.set(messageOf(e, 'Falha na autenticação.'));
     } finally {

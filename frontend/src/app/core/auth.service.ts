@@ -15,6 +15,16 @@ interface AuthResponse {
   user: CfUser;
 }
 
+/** Resposta do cadastro pós-verificação de e-mail: usuário criado, mas NÃO autenticado. */
+interface CadastroResponse {
+  user: CfUser;
+  message: string;
+}
+
+interface MensagemResponse {
+  message: string;
+}
+
 const STORAGE_KEY = 'cf_auth';
 
 @Injectable({ providedIn: 'root' })
@@ -29,15 +39,29 @@ export class Auth {
   private readonly http = inject(HttpClient);
   private readonly api = inject(ApiUrl);
 
-  async register(email: string, password: string, displayName: string): Promise<void> {
+  /**
+   * Cadastra sem autenticar (o login só existe após a confirmação do e-mail) e devolve a mensagem
+   * de orientação enviada pelo backend. NÃO cria sessão.
+   */
+  async register(email: string, password: string, displayName: string): Promise<string> {
     const res = await firstValueFrom(
-      this.http.post<AuthResponse>(`${this.api.base}/api/auth/register`, {
+      this.http.post<CadastroResponse>(`${this.api.base}/api/auth/register`, {
         email,
         password,
         displayName,
       }),
     );
-    this.setSession(res);
+    return res.message;
+  }
+
+  /** Confirma o e-mail pelo token do link e devolve a mensagem do backend. */
+  async verificar(token: string): Promise<string> {
+    const res = await firstValueFrom(
+      this.http.get<MensagemResponse>(`${this.api.base}/api/auth/verificar`, {
+        params: { token },
+      }),
+    );
+    return res.message;
   }
 
   async login(email: string, password: string): Promise<void> {

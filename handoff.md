@@ -207,21 +207,23 @@ Priorizadas — da mais urgente para a menos:
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
 6. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-7. **Verificação de e-mail no cadastro** — em andamento (decisão do dono: 1b, SMTP com conta
-   dele, bloqueio de login até confirmar). Fluxo e migração prontos (PR 80: V2
-   `verificacao_email`, login 403, `/api/auth/verificar`, `/reenviar-verificacao`) e o
-   transporte por SMTP também (PR: `spring-boot-starter-mail`, ligue com as vars
-   `SMTP_HOST/PORT/USER/PASSWORD/FROM/AUTH` no EnvironmentFile da VM — sem `SMTP_HOST` o
-   link sai no log). Falta só a tela no frontend (PR 3). A enumeração (pendência 5)
-   continua mitigada por rate limit — a verificação não altera a resposta 409.
-8. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+7. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
    testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
-9. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+8. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- **Verificação de e-mail no cadastro** (decisão do dono: 1b, SMTP com a conta dele, bloqueio
+  de login até confirmar; PRs 80, 81 e 82): migração V2 `verificacao_email` (login de
+  não-verificado → 403, `/api/auth/verificar` público, `/reenviar-verificacao` limitado a
+  5/min por IP), transporte configurável (`LogEmailEnviador` sem `SMTP_HOST` — link no log,
+  `SmtpEmailEnvio` com as vars no EnvironmentFile da VM) e frontend: cadastro não loga mais
+  (mostra a orientação e volta ao login), login 403 exibe a mensagem do corpo e a rota
+  `/verificar?token=` confirma pelo link e aponta para o login. A enumeração do `/register`
+  continua mitigada só pelo rate limit (ver pendência 5).
 
 - CSP via `<meta>` no `index.html` (o Pages não dá header HTTP): img-src com Data Dragon e
   Community Dragon, connect-src com a origem da API, scripts só `'self'`, resto fechado;

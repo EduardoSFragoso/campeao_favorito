@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Semântica das chaves de cache do RiotService (rede de segurança contra colisão): o perfil cacheia
  * por "profile:{platform}:{GAMENAME#TAG}" (case-insensitive de propósito — a Riot trata
- * gameName#tagLine sem case), o rank por summoner id e a maestria por puuid. Contas diferentes NÃO
- * podem dividir entrada e a mesma conta em plataforma diferente NÃO pode reusar cache.
+ * gameName#tagLine sem case), o rank e a maestria por puuid. Contas diferentes NÃO podem dividir
+ * entrada e a mesma conta em plataforma diferente NÃO pode reusar cache.
  */
 class RiotServiceCacheKeysTest {
 
@@ -48,16 +48,16 @@ class RiotServiceCacheKeysTest {
             eq(RiotSummoner.class),
             eq(puuid)))
         .thenReturn(new RiotSummoner(summonerId, puuid, gameName, "acid-1", 42, 300, 0L));
-    stubRanked(platform, summonerId);
+    stubRanked(platform, puuid);
     stubMaestrias(platform, puuid);
   }
 
-  private void stubRanked(String platform, String summonerId) {
+  private void stubRanked(String platform, String puuid) {
     when(client.getServer(
             eq(platform),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq(summonerId)))
+            eq(puuid)))
         .thenReturn(new RiotDtos.LeagueEntry[0]);
   }
 
@@ -92,8 +92,7 @@ class RiotServiceCacheKeysTest {
   }
 
   @Test
-  @DisplayName(
-      "cache: contas diferentes não dividem ranked (por summoner id) nem maestria (por puuid)")
+  @DisplayName("cache: contas diferentes não dividem ranked nem maestria (ambos por puuid)")
   void contasDistintasNaoDividemSubcaches() {
     stubConta("Hideonbush", "KR", "br1", "puuid-1", "sum-1");
     stubConta("Faker", "KR", "br1", "puuid-2", "sum-2");
@@ -101,19 +100,19 @@ class RiotServiceCacheKeysTest {
     service.summonerProfile("Hideonbush", "KR", "br1");
     service.summonerProfile("Faker", "KR", "br1");
 
-    // ranked é cacheado por summoner id: cada conta teve a SUA busca (times(1) com o id próprio)
+    // ranked é cacheado por puuid: cada conta teve a SUA busca (times(1) com o puuid próprio)
     verify(client, times(1))
         .getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-1"));
+            eq("puuid-1"));
     verify(client, times(1))
         .getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-2"));
+            eq("puuid-2"));
     // idem maestria por puuid
     verify(client, times(1))
         .getServer(

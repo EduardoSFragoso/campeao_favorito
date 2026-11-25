@@ -223,15 +223,18 @@ public class RiotService {
 
           List<RiotDtos.LeagueEntry> ranked =
               withCache(
-                  "ranked:" + summoner.id(),
+                  // chave por PUUID: summoner.id() pode vir null (e a Riot o está aposentando)
+                  "ranked:" + account.puuid(),
                   () -> {
                     try {
                       RiotDtos.LeagueEntry[] arr =
                           client.getServer(
                               plataforma,
-                              "/lol/league/v4/entries/by-summoner/{sid}",
+                              // by-summoner foi removida da League-V4 (anúncio de jun/2025);
+                              // a leitura do elo passou a ser por PUUID
+                              "/lol/league/v4/entries/by-puuid/{puuid}",
                               RiotDtos.LeagueEntry[].class,
-                              summoner.id());
+                              account.puuid());
                       return arr == null
                           ? List.<RiotDtos.LeagueEntry>of()
                           : List.of(arr).stream().filter(e -> e.games() > 0).toList();

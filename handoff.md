@@ -203,26 +203,27 @@ Priorizadas — da mais urgente para a menos:
 4. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-5. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — verificar na
-   documentação atual da Riot se `league/v4/entries/by-summoner` está depreciada em favor de
-   `by-puuid`; migrar se estiver. Verificar também o tratamento de `summoner.id` nulo e a
-   chave de cache do ranking, que hoje depende do summonerId.
-6. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
+5. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
-7. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
+6. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-8. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
+7. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
    Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
-9. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
+8. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
    revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
-10. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
-    testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
-11. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+9. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+   testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
+10. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- League-V4 migrou de `entries/by-summoner` (removida pela Riot, anúncio de jun/2025) para
+  `entries/by-puuid`: o elo é lido com o PUUID da conta, `summoner.id()` nulo não afeta o
+  perfil e a chave do cache do ranking virou puuid (`RiotServiceLeaguePuuidTest`, vermelho no
+  código antigo).
 
 - Teste de ponta a ponta do `RiotClient` com JSON nulo via servidor de stub
   (`RiotClientJsonNuloE2ETest`): o corpo passa pelo HTTP real do RestClient, provando que os

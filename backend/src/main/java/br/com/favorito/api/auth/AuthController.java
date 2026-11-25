@@ -16,9 +16,14 @@ public class AuthController {
   private final RegisterRateLimiter registerLimiter;
   private final VerificacaoEmailService verificacao;
 
+  /**
+   * Cadastro com resposta ÚNICA (opção A do dono, anti-enumeração): 201 + mensagem igual para conta
+   * nova, pendente e confirmada — quem já tem conta não é revelado. Rate limit mantido: contas
+   * pendentes disparam e-mail novo, então o teto guard no abuso.
+   */
   @PostMapping("/register")
   @ResponseStatus(HttpStatus.CREATED)
-  public AuthDtos.CadastroResponse register(
+  public AuthDtos.MensagemResponse register(
       @Valid @RequestBody AuthDtos.RegisterRequest req, HttpServletRequest http) {
     // prod: IP real via X-Forwarded-For (nginx) graças ao forward-headers-strategy
     registerLimiter.check(http.getRemoteAddr());

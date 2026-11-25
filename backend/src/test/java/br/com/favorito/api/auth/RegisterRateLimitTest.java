@@ -68,7 +68,7 @@ class RegisterRateLimitTest {
     if (forwardedFor != null) {
       req = req.header("X-Forwarded-For", forwardedFor);
     }
-    // o corpo de erro {"error": ...} só existe no 429; no 201 vem o token
+    // o corpo de erro {"error": ...} só existe no 429; no 201 vem a mensagem genérica
     if (status == 201) {
       mvc.perform(req).andExpect(status().is(status));
     } else {
@@ -79,9 +79,7 @@ class RegisterRateLimitTest {
   @BeforeEach
   void preparaMock() {
     when(authService.register(any()))
-        .thenReturn(
-            new AuthDtos.CadastroResponse(
-                new AuthDtos.UserResponse(1L, "x@y.dev", "X"), "Verifique o e-mail."));
+        .thenReturn(new AuthDtos.MensagemResponse("Verifique o e-mail."));
   }
 
   @Test

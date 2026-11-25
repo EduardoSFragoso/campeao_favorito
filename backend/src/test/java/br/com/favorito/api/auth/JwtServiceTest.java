@@ -78,7 +78,7 @@ class JwtServiceTest {
     IllegalStateException ex =
         assertThrows(
             IllegalStateException.class,
-            () -> new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, prod));
+            () -> new JwtService(JwtServicePlaceholderValue.VALUE, 60000L, prod));
     assertEquals(
         "JWT_SECRET não definida no perfil de produção. "
             + "Defina JWT_SECRET no EnvironmentFile (openssl rand -base64 64).",
@@ -92,7 +92,7 @@ class JwtServiceTest {
     IllegalStateException ex =
         assertThrows(
             IllegalStateException.class,
-            () -> new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, new MockEnvironment()));
+            () -> new JwtService(JwtServicePlaceholderValue.VALUE, 60000L, new MockEnvironment()));
     assertEquals(
         "JWT_SECRET não definida: o placeholder do repositório só é aceito "
             + "nos perfis dev/test. Defina JWT_SECRET no ambiente (openssl rand -base64 64).",
@@ -107,7 +107,8 @@ class JwtServiceTest {
     String curto = "chave-curta"; // < 32 bytes
     IllegalStateException ex =
         assertThrows(
-            IllegalStateException.class, () -> new JwtService(curto, 1000L, new MockEnvironment()));
+            IllegalStateException.class,
+            () -> new JwtService(curto, 60000L, new MockEnvironment()));
     assertEquals(
         "JWT_SECRET muito fraca: 11 bytes; o mínimo é 32 bytes (HS256)."
             + " Gere com openssl rand -base64 64.",
@@ -119,13 +120,13 @@ class JwtServiceTest {
     // dev explícito: placeholder segue funcionando (sprint local)
     MockEnvironment dev = new MockEnvironment();
     dev.setActiveProfiles("dev");
-    JwtService comPlaceholder = new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, dev);
+    JwtService comPlaceholder = new JwtService(JwtServicePlaceholderValue.VALUE, 60000L, dev);
     assertEquals("42", comPlaceholder.validate(comPlaceholder.issue(user)));
 
     // idem no perfil test (smoke e slices)
     MockEnvironment test = new MockEnvironment();
     test.setActiveProfiles("test");
-    JwtService noTest = new JwtService(JwtServicePlaceholderValue.VALUE, 1000L, test);
+    JwtService noTest = new JwtService(JwtServicePlaceholderValue.VALUE, 60000L, test);
     assertEquals("42", noTest.validate(noTest.issue(user)));
   }
 
@@ -137,12 +138,12 @@ class JwtServiceTest {
     String curto = "chave-curta"; // 11 bytes
     IllegalStateException ex =
         assertThrows(
-            IllegalStateException.class, () -> new JwtService(curto, 1000L, ambiente("dev")));
+            IllegalStateException.class, () -> new JwtService(curto, 60000L, ambiente("dev")));
     assertTrue(ex.getMessage().contains("muito fraca"));
 
     IllegalStateException exTest =
         assertThrows(
-            IllegalStateException.class, () -> new JwtService(curto, 1000L, ambiente("test")));
+            IllegalStateException.class, () -> new JwtService(curto, 60000L, ambiente("test")));
     assertTrue(exTest.getMessage().contains("muito fraca"));
   }
 
@@ -156,7 +157,7 @@ class JwtServiceTest {
   void perfilSemProdNaoDispara() {
     Environment env = org.mockito.Mockito.mock(Environment.class);
     when(env.matchesProfiles(org.mockito.ArgumentMatchers.any(String[].class))).thenReturn(false);
-    assertNotNull(new JwtService(SECRET, 1000L, env));
+    assertNotNull(new JwtService(SECRET, 60000L, env));
   }
 }
 

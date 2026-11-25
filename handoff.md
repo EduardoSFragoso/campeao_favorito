@@ -209,24 +209,25 @@ Priorizadas — da mais urgente para a menos:
    chave de cache do ranking, que hoje depende do summonerId.
 6. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
-7. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
-   leitura com o mapper padrão; falta um teste que passe pela resposta HTTP real do `RestClient`
-   (servidor de stub) com `null` nos numéricos, garantindo que os conversores usados em runtime
-   têm a mesma tolerância.
-8. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
+7. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-9. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
-    Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
-10. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
-    revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
-11. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+8. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
+   Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
+9. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
+   revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
+10. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
     testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
-12. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+11. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- Teste de ponta a ponta do `RiotClient` com JSON nulo via servidor de stub
+  (`RiotClientJsonNuloE2ETest`): o corpo passa pelo HTTP real do RestClient, provando que os
+  conversores de runtime têm a mesma tolerância a `null` dos DTOs (mutação sem `AS_EMPTY`
+  falha no teste).
 
 - Postgres descartável local para a suíte de banco real documentado
   ([docs/banco-real-local.md](docs/banco-real-local.md)): container `postgres:17` com a

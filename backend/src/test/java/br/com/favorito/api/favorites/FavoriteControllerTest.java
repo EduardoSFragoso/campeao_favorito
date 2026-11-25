@@ -108,4 +108,34 @@ class FavoriteControllerTest {
         .andExpect(content().json("{\"removed\": true}"));
     verify(favoriteService).remove("Lux");
   }
+
+  /** Contrato que o frontend consome (CfFavorite): só campos públicos, nunca o userId interno. */
+  @Test
+  void listaRetornaContratoDaCfFavoriteSemUserId() throws Exception {
+    when(favoriteService.listMine()).thenReturn(List.of(favorito(1L, "Ahri", "Ahri")));
+
+    mvc.perform(get("/api/favorites").with(user("7")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(1))
+        .andExpect(jsonPath("$[0].championId").value("Ahri"))
+        .andExpect(jsonPath("$[0].championName").value("Ahri"))
+        .andExpect(jsonPath("$[0].title").value("A Dama das Sombras"))
+        .andExpect(jsonPath("$[0].createdAt").value("2026-01-01T00:00:00Z"))
+        .andExpect(jsonPath("$[0].userId").doesNotExist());
+  }
+
+  @Test
+  void addRetornaMesmoContratoSemUserId() throws Exception {
+    when(favoriteService.add(any())).thenReturn(favorito(2L, "Lux", "Lux"));
+
+    mvc.perform(
+            post("/api/favorites")
+                .with(user("7"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"championId\":\"Lux\",\"championName\":\"Lux\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(2))
+        .andExpect(jsonPath("$.createdAt").value("2026-01-01T00:00:00Z"))
+        .andExpect(jsonPath("$.userId").doesNotExist());
+  }
 }

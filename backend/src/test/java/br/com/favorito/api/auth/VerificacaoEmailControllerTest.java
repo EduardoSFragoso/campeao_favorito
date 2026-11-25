@@ -32,6 +32,8 @@ class VerificacaoEmailControllerTest {
 
   @MockitoBean AuthService authService;
   @MockitoBean JwtService jwtService;
+  @MockitoBean UserRepository users; // revisão de sessão do filtro (token_ver)
+  @MockitoBean CurrentUserService currentUser; // dependência do AuthController (logout)
   @MockitoBean LoginRateLimiter loginLimiter;
   @MockitoBean RegisterRateLimiter registerLimiter;
   @MockitoBean VerificacaoEmailService verificacao;

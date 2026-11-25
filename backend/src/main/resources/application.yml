@@ -27,7 +27,8 @@ app:
     # gere um secret forte: openssl rand -base64 64 (mínimo 32 bytes). O JwtService RECUSA
     # este placeholder em qualquer ambiente sem o perfil dev ou test ativo explicitamente.
     secret: ${JWT_SECRET:troque-este-secret-em-producao-com-uma-chave-de-64-bytes-no-minimo!!}
-    expiration-ms: 604800000 # 7 dias
+    # 24h (antes eram 7 dias). Override por ambiente: JWT_EXPIRATION_MS (para teste/domingo).
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   # e-mail de verificação: SEM host o transporte é o de LOG. Credenciais na VM via env (

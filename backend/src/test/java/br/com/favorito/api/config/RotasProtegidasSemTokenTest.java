@@ -50,6 +50,7 @@ class RotasProtegidasSemTokenTest {
   @MockitoBean FavoriteService favoriteService;
   @MockitoBean RiotService riotService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
+  @MockitoBean br.com.favorito.api.auth.UserRepository users; // revisão de sessão (token_ver)
 
   private void deveEstarBloqueada(MockHttpServletRequestBuilder request, String rota)
       throws Exception {

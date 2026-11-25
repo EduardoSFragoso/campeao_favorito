@@ -50,6 +50,9 @@ class ForwardedHeaderRemoteAddrTest {
   // o JwtAuthFilter real entra no slice por ser bean de Filter; o mock só satisfaz o construtor
   @MockitoBean JwtService jwtService;
 
+  @MockitoBean
+  br.com.favorito.api.auth.UserRepository users; // construtor do JwtAuthFilter (token_ver)
+
   @Test
   void ipDoXForwardedForViraORemoteAddrVistoPeloController() throws Exception {
     mvc.perform(get("/probe/remote-addr").header("X-Forwarded-For", "198.51.100.7"))

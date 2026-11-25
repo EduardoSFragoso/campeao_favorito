@@ -36,4 +36,11 @@ public class User {
   /** Cadastro confirmado: é ligado quando o dono do e-mail valida o token de verificação. */
   @Column(name = "email_verificado", nullable = false)
   private boolean emailVerificado = false;
+
+  /**
+   * Versão da sessão: o JwtAuthFilter só autentica JWT cujo claim "ver" seja IGUAL a este valor. O
+   * logout incrementa — matando todos os tokens emitidos antes (sem lista de sessões).
+   */
+  @Column(name = "token_ver", nullable = false)
+  private short tokenVer = 0;
 }

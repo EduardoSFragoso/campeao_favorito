@@ -80,4 +80,18 @@ public class AuthService {
     }
     return new AuthDtos.AuthResponse(jwtService.issue(user), AuthDtos.UserResponse.from(user));
   }
+
+  /**
+   * Logout de verdade: incrementa a versão da sessão do usuário — todos os JWT emitidos antes
+   * (qualquer dispositivo) deixam de autenticar no JwtAuthFilter. Sem lista de sessões: um número
+   * por usuário. Nada é emitido de volta; o cliente descarta o próprio token.
+   */
+  public void logout(long userId) {
+    users
+        .findById(userId)
+        .ifPresent(user -> {
+          user.setTokenVer((short) (user.getTokenVer() + 1));
+          users.save(user);
+        });
+  }
 }

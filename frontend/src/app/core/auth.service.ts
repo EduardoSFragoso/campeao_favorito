@@ -71,9 +71,20 @@ export class Auth {
   }
 
   logout(): void {
+    const token = this._token();
     this._user.set(null);
     this._token.set(null);
     localStorage.removeItem(STORAGE_KEY);
+    if (token) {
+      // Revoga no servidor (POST /api/auth/logout → token_ver++ mata todo JWT antigo).
+      // fetch FORA do HttpClient de propósito: o POST não passa pelo interceptor — um 401
+      // daqui não pode disparar logout de novo (laço). Falha é ignorada: a sessão local já
+      // acabou; se o servidor não ouviu, o próprio token morre em 24h.
+      fetch(`${this.api.base}/api/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => undefined);
+    }
   }
 
   private setSession(res: AuthResponse): void {

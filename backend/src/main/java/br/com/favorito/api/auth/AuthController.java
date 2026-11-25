@@ -15,6 +15,7 @@ public class AuthController {
   private final LoginRateLimiter loginLimiter;
   private final RegisterRateLimiter registerLimiter;
   private final VerificacaoEmailService verificacao;
+  private final CurrentUserService currentUser;
 
   /**
    * Cadastro com resposta ÚNICA (opção A do dono, anti-enumeração): 201 + mensagem igual para conta
@@ -56,5 +57,14 @@ public class AuthController {
     // prod: IP real via X-Forwarded-For (nginx) graças ao forward-headers-strategy
     loginLimiter.check(http.getRemoteAddr());
     return authService.login(req);
+  }
+
+  /**
+   * Revoga a sessão no servidor (token_ver++); o cliente descarta o token local. 204, sem corpo.
+   */
+  @PostMapping("/logout")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void logout() {
+    authService.logout(currentUser.userId());
   }
 }

@@ -2,6 +2,7 @@ package br.com.favorito.api.config;
 
 import br.com.favorito.api.auth.JwtAuthFilter;
 import java.util.List;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,7 +37,11 @@ public class SecurityConfig {
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth ->
-            auth.requestMatchers("/api/auth/**", "/api/health", "/error")
+            auth
+                // logout precisa de sessão de verdade: vem ANTES do permitAll de /api/auth/**
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/logout")
+                .authenticated()
+                .requestMatchers("/api/auth/**", "/api/health", "/error")
                 .permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                 .permitAll()
@@ -44,6 +49,19 @@ public class SecurityConfig {
                 .authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
+  }
+
+  /**
+   * O JwtAuthFilter pertence SÓ à cadeia de segurança (addFilterBefore acima). Sem isto, o Boot o
+   * registraria também como filtro servlet solto: em MockMvc ele roda ANTES do proxy de segurança,
+   * marca "já filtrado" (OncePerRequestFilter) e a cópia interna da cadeia pula — o contexto
+   * autenticado se perde no SecurityContextHolderFilter e toda rota protegida dá 403.
+   */
+  @Bean
+  FilterRegistrationBean<JwtAuthFilter> registroDedicadoAoJwtAuthFilter(JwtAuthFilter filtro) {
+    var registro = new FilterRegistrationBean<>(filtro);
+    registro.setEnabled(false);
+    return registro;
   }
 
   @Bean

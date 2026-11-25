@@ -49,6 +49,14 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
+
+    <!-- Envio SMTP do e-mail de verificação (JavaMailSender). Boot 4 modularizou:
+         o autoconfig vem no spring-boot-mail, trazido pelo starter. Em dev/CI nada
+         é usado — sem app.smtp.host o transporte é o de log. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>

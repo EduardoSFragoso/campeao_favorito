@@ -30,6 +30,23 @@ app:
     expiration-ms: 604800000 # 7 dias
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  # e-mail de verificação: SEM host o transporte é o de LOG. Credenciais na VM via env (
+  # nomes em .env.example); starttls é o padrão da porta 587.
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      "mail.smtp.auth": ${SMTP_AUTH:true}
+      "mail.smtp.starttls.enable": true
+      "mail.smtp.connectiontimeout": 5000
+      "mail.smtp.timeout": 10000
+      "mail.smtp.writetimeout": 10000
+  smtp:
+    # espelho de spring.mail.host + remetente para o MailConfig escolher o transporte
+    host: ${SMTP_HOST:}
+    from: ${SMTP_FROM:}
 
 riot:
   api:

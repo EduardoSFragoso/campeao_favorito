@@ -50,8 +50,18 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Argumento rejeitado na camada de domínio (platform fora da whitelist, p.ex.). A mensagem
-   * original pode carregar detalhe de validação interna — log sim, resposta genérica.
+   * Validação de entrada NOSSA (platform, Riot ID, ?platform=) — a mensagem é regra nossa,
+   * acionável e vai inteira no 400. O IAE puro continua genérico (ver abaixo).
+   */
+  @ExceptionHandler(EntradaInvalidaException.class)
+  public ResponseEntity<Map<String, Object>> entradaInvalida(EntradaInvalidaException e) {
+    return ResponseEntity.badRequest()
+        .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Requisição inválida."));
+  }
+
+  /**
+   * Argumento rejeitado na camada de domínio. A mensagem original pode carregar detalhe de
+   * validação interna — log sim, resposta genérica.
    */
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException e) {

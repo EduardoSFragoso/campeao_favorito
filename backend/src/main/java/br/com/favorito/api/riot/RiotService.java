@@ -1,5 +1,6 @@
 package br.com.favorito.api.riot;
 
+import br.com.favorito.api.common.EntradaInvalidaException;
 import br.com.favorito.api.common.RiotApiException;
 import java.util.HashMap;
 import java.util.List;
@@ -133,7 +134,7 @@ public class RiotService {
   private static String exigirTextoValido(String valor, String mensagem) {
     String v = valor == null ? "" : valor.trim();
     if (v.isBlank() || !v.matches("(?=.*[\\p{L}\\p{N}])[\\p{L}\\p{N} ._'\\-]{1,32}")) {
-      throw new IllegalArgumentException(mensagem);
+      throw new EntradaInvalidaException(mensagem);
     }
     return v;
   }
@@ -141,7 +142,7 @@ public class RiotService {
   private static String exigirTagValida(String tagLine) {
     String t = tagLine == null ? "" : tagLine.trim();
     if (t.isBlank() || !t.matches("[\\p{L}\\p{N}]{2,5}")) {
-      throw new IllegalArgumentException("tagLine inválida: 2–5 letras ou números.");
+      throw new EntradaInvalidaException("tagLine inválida: 2–5 letras ou números.");
     }
     return t;
   }
@@ -154,7 +155,7 @@ public class RiotService {
   private static String normalizarPlataforma(String platform) {
     String p = (platform == null || platform.isBlank()) ? "br1" : platform.trim().toLowerCase();
     if (!RiotClient.platforms().contains(p)) {
-      throw new IllegalArgumentException("Plataforma inválida: " + p);
+      throw new EntradaInvalidaException("Plataforma inválida: " + p);
     }
     return p;
   }

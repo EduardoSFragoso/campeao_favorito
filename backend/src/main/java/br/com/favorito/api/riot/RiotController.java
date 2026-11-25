@@ -1,5 +1,6 @@
 package br.com.favorito.api.riot;
 
+import br.com.favorito.api.common.EntradaInvalidaException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -89,7 +90,7 @@ public class RiotController {
   private String platformOr(String platform) {
     String p = (platform == null || platform.isBlank()) ? props.defaultPlatform() : platform;
     if (p == null || p.isBlank()) {
-      throw new IllegalArgumentException("Informar ?platform=");
+      throw new EntradaInvalidaException("Informar ?platform=");
     }
     return p;
   }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import br.com.favorito.api.common.EntradaInvalidaException;
 import br.com.favorito.api.config.RiotProperties;
 import org.junit.jupiter.api.Test;
 
@@ -31,10 +32,11 @@ class RiotClientTest {
 
   @Test
   void rejeitaPlataformaForaDaWhiteList() {
-    // tentativa clássica de SSRF: host externo colado no prefixo
-    assertThrows(IllegalArgumentException.class, () -> client.routing("evil.com/"));
-    assertThrows(IllegalArgumentException.class, () -> client.routing("../internal"));
-    assertThrows(IllegalArgumentException.class, () -> client.routing("xx1"));
+    // tentativa clássica de SSRF: host externo colado no prefixo (EntradaInvalidaException → 400
+    // com a mensagem acionável no handler; é validação que nós controlamos)
+    assertThrows(EntradaInvalidaException.class, () -> client.routing("evil.com/"));
+    assertThrows(EntradaInvalidaException.class, () -> client.routing("../internal"));
+    assertThrows(EntradaInvalidaException.class, () -> client.routing("xx1"));
   }
 
   @Test

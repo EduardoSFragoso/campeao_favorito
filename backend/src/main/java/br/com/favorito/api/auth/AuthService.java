@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +26,14 @@ public class AuthService {
   private final JwtService jwtService;
   private final VerificacaoEmailService verificacao;
 
-  @Transactional
+  /**
+   * SEM @Transactional de propósito: quem perde a corrida em users_email_key toma DIVE numa
+   * transação SOBERTANTA (a do próprio INSERT, via repositorio) — se o register abrisse uma
+   * transação envolvente, ela ficaria rollback-only e o commit plantaria
+   * UnexpectedRollbackException na mão do perdedor (mordeu na CI do PR 85). Consequência aceita:
+   * user e token não são atômicos — e o cadastro é resend-covered pelo /reenviar-verificacao se o
+   * token não sair.
+   */
   public AuthDtos.MensagemResponse register(AuthDtos.RegisterRequest req) {
     String email = req.email().trim().toLowerCase();
 

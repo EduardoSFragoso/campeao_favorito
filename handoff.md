@@ -206,26 +206,23 @@ Priorizadas — da mais urgente para a menos:
 6. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-7. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — a Riot depreca
-   rotas por summonerId; verificar o tratamento de `summoner.id` nulo (League para MMR-only não
-   cria summoner) e revisar a chave de cache do ranking, que hoje depende do summonerId.
-8. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — enumeração
-   de e-mails mitigada apenas pelo rate limit de 5/min por IP; resposta genérica tiraria a
-   mensagem acionável de quem de fato já tem conta. Risco aceito pelo dono na configuração
-   atual.
+7. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — verificar na
+   documentação atual da Riot se `league/v4/entries/by-summoner` está depreciada em favor de
+   `by-puuid`; migrar se estiver. Verificar também o tratamento de `summoner.id` nulo e a
+   chave de cache do ranking, que hoje depende do summonerId.
+8. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
+   enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
 9. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
    leitura com o mapper padrão; falta um teste que passe pela resposta HTTP real do `RestClient`
    (servidor de stub) com `null` nos numéricos, garantindo que os conversores usados em runtime
    têm a mesma tolerância.
-10. **JWT de 7 dias no `localStorage`, sem revogação** — risco aceito: expirar token/logout só
-    pelo frontend não derruba o token server-side. Mudança de opinião seria reduzir a validade
-    + refresh token guardado de outra forma.
-11. **Redirecionar o visitante para `/login` ao buscar invocador** — pendência decidida pelo
-    dono: a busca de invocador exige login e o visitante deve ser levado para `/login`
-    (UX; correr depois da decisão de onde aterrissar de volta com o sistema).
+10. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
+    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
 
 ## Pendências resolvidas (arquivo)
 
+- Visitante que busca invocador é levado para `/login` quando a API responde 401/403
+  (PR 67).
 - **Auditoria de infra concluída em 2026-11-23** — `docs/auditoria-infra.md` com todas as seções
   verificadas: Neon (role mínima + Flyway em produção), VM (portas, env 600, SSH só chave,
   rpcbind desativado, Security List validada externamente), CORS (origem estranha 403 sem ACAO,

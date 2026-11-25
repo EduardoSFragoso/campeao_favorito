@@ -44,10 +44,14 @@ class AuthControllerTest {
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
   @MockitoBean LoginRateLimiter loginLimiter;
   @MockitoBean RegisterRateLimiter registerLimiter;
+  @MockitoBean VerificacaoEmailService verificacao;
 
   @Test
-  void registerValidoRetorna201ComToken() throws Exception {
-    when(authService.register(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+  void registerValidoRetorna201SemTokenEComInstrucaoDeVerificar() throws Exception {
+    when(authService.register(any()))
+        .thenReturn(
+            new AuthDtos.CadastroResponse(
+                new AuthDtos.UserResponse(1L, "a@b.dev", "Ana"), "Verifique o e-mail."));
 
     mvc.perform(
             post("/api/auth/register")
@@ -55,7 +59,8 @@ class AuthControllerTest {
                 .content(
                     "{\"email\":\"a@b.dev\",\"password\":\"12345678\",\"displayName\":\"Ana\"}"))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.token").value("jwt-mock"));
+        .andExpect(jsonPath("$.token").doesNotExist())
+        .andExpect(jsonPath("$.message").value("Verifique o e-mail."));
   }
 
   @Test

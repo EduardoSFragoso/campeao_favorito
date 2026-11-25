@@ -61,6 +61,7 @@ class LoginRateLimiterForwardedTest {
 
   @MockitoBean AuthService authService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
+  @MockitoBean VerificacaoEmailService verificacao;
 
   private void loginCom(String forwardedFor) throws Exception {
     var request = post("/api/auth/login").contentType("application/json").content(LOGIN);

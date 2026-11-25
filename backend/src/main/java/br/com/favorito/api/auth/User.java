@@ -32,4 +32,8 @@ public class User {
 
   @Column(nullable = false)
   private Instant createdAt = Instant.now();
+
+  /** Cadastro confirmado: é ligado quando o dono do e-mail valida o token de verificação. */
+  @Column(name = "email_verificado", nullable = false)
+  private boolean emailVerificado = false;
 }

@@ -12,7 +12,17 @@ public record AuthDtos() {
 
   public record LoginRequest(@NotBlank String email, @NotBlank String password) {}
 
+  public record ReenvioRequest(@NotBlank @Email String email) {}
+
   public record AuthResponse(String token, UserResponse user) {}
+
+  /**
+   * Resposta do cadastro: NÃO autentica (JWT só depois do e-mail confirmado, no login) e a mensagem
+   * orienta o próximo passo.
+   */
+  public record CadastroResponse(UserResponse user, String message) {}
+
+  public record MensagemResponse(String message) {}
 
   public record UserResponse(Long id, String email, String displayName) {
     public static UserResponse from(User u) {

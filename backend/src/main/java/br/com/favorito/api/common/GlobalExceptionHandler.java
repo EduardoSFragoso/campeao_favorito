@@ -111,6 +111,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
   }
 
+  /** E-mail cadastrado mas não confirmado (403) — o texto orienta o que fazer. */
+  @ExceptionHandler(EmailNaoVerificadoException.class)
+  public ResponseEntity<Map<String, Object>> emailNaoVerificado(EmailNaoVerificadoException e) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> generic(Exception e) {
     // detalhe completo só no log — a mensagem interna não vaza para o client

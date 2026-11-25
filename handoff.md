@@ -207,18 +207,23 @@ Priorizadas — da mais urgente para a menos:
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
 6. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-7. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
-   Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
-8. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
+7. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
    revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
-9. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+8. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
    testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
-10. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+9. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- CSP via `<meta>` no `index.html` (o Pages não dá header HTTP): img-src com Data Dragon e
+  Community Dragon, connect-src com a origem da API, scripts só `'self'`, resto fechado;
+  cobertura em `frontend/src/csp.spec.ts` (vermelho no index antigo). `frame-ancestors`
+  não funciona em `<meta>` — quem muda o `index.html` atualiza o spec junto. O spec lê o
+  `index.html` do disco, o que exigiu dev-dependency `@types/node` + `"node"` no `types`
+  do `tsconfig.spec.json` (só teste; motivo registrado por ser dependência nova).
 
 - League-V4 migrou de `entries/by-summoner` (removida pela Riot, anúncio de jun/2025) para
   `entries/by-puuid`: o elo é lido com o PUUID da conta, `summoner.id()` nulo não afeta o

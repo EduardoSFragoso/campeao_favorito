@@ -4,6 +4,17 @@
     <meta charset="utf-8" />
     <title>Campeões Favoritos — League of Legends</title>
     <base href="/" />
+    <!--
+      CSP via <meta>: o GitHub Pages impõe cabeçalhos HTTP. O texto da política é
+      coberto por src/csp.spec.ts. Em <meta> não funciona frame-ancestors; o resto é
+      suportado: connect-src com a origem única da API, img-src com Data Dragon e
+      Community Dragon (splashes/ícones), scripts só da própria origem e style-src
+      'unsafe-inline' porque o Angular injeta estilos de componente em runtime.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; img-src 'self' data: https://ddragon.leagueoflegends.com https://raw.communitydragon.org; connect-src 'self' https://api.campeao-favorito.dev"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"

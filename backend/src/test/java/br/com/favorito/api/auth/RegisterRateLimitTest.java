@@ -57,6 +57,7 @@ class RegisterRateLimitTest {
 
   @MockitoBean AuthService authService;
   @MockitoBean JwtService jwtService; // dependência do JwtAuthFilter real
+  @MockitoBean VerificacaoEmailService verificacao;
 
   private static String corpo(String email) {
     return "{\"email\":\"" + email + "\",\"password\":\"12345678\",\"displayName\":\"Ana\"}";
@@ -77,7 +78,10 @@ class RegisterRateLimitTest {
 
   @BeforeEach
   void preparaMock() {
-    when(authService.register(any())).thenReturn(new AuthDtos.AuthResponse("jwt-mock", null));
+    when(authService.register(any()))
+        .thenReturn(
+            new AuthDtos.CadastroResponse(
+                new AuthDtos.UserResponse(1L, "x@y.dev", "X"), "Verifique o e-mail."));
   }
 
   @Test

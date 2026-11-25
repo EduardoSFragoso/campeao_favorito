@@ -2,6 +2,7 @@ package br.com.favorito.api.auth;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,7 +27,8 @@ class CorridaRegisterTest {
     UserRepository users = mock(UserRepository.class);
     PasswordEncoder encoder = mock(PasswordEncoder.class);
     JwtService jwtService = mock(JwtService.class);
-    AuthService service = new AuthService(users, encoder, jwtService);
+    AuthService service =
+        new AuthService(users, encoder, jwtService, mock(VerificacaoEmailService.class));
 
     // janela da corrida: o exists foi visto ANTES do insert do outro thread
     when(users.existsByEmailIgnoreCase("corrida@exemplo.dev")).thenReturn(false);
@@ -50,8 +52,8 @@ class CorridaRegisterTest {
         br.com.favorito.api.common.DuplicateResourceException.class, () -> service.register(req));
 
     verify(users, times(2)).saveAndFlush(any(User.class));
-    // token só para quem venceu a corrida (1ª paginação do issue)
-    verify(jwtService, times(1)).issue(any(User.class));
+    // cadastro NÃO emite token mais (só depois do e-mail confirmado, no login)
+    verify(jwtService, never()).issue(any(User.class));
   }
 
   @Test
@@ -61,7 +63,8 @@ class CorridaRegisterTest {
     UserRepository users = mock(UserRepository.class);
     PasswordEncoder encoder = mock(PasswordEncoder.class);
     JwtService jwtService = mock(JwtService.class);
-    AuthService service = new AuthService(users, encoder, jwtService);
+    AuthService service =
+        new AuthService(users, encoder, jwtService, mock(VerificacaoEmailService.class));
 
     when(users.existsByEmailIgnoreCase("qualquer@exemplo.dev")).thenReturn(false);
     when(encoder.encode(any())).thenReturn("hash");

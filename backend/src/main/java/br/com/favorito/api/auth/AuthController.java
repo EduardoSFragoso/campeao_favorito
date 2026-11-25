@@ -14,14 +14,35 @@ public class AuthController {
   private final AuthService authService;
   private final LoginRateLimiter loginLimiter;
   private final RegisterRateLimiter registerLimiter;
+  private final VerificacaoEmailService verificacao;
 
   @PostMapping("/register")
   @ResponseStatus(HttpStatus.CREATED)
-  public AuthDtos.AuthResponse register(
+  public AuthDtos.CadastroResponse register(
       @Valid @RequestBody AuthDtos.RegisterRequest req, HttpServletRequest http) {
     // prod: IP real via X-Forwarded-For (nginx) graças ao forward-headers-strategy
     registerLimiter.check(http.getRemoteAddr());
     return authService.register(req);
+  }
+
+  /** Confirmação do e-mail (link do cadastro). Pública: quem chega é quem tem o token. */
+  @GetMapping("/verificar")
+  public AuthDtos.MensagemResponse verificar(@RequestParam("token") String token) {
+    verificacao.verificar(token);
+    return new AuthDtos.MensagemResponse("E-mail confirmado — já pode entrar.");
+  }
+
+  /**
+   * Renvio do e-mail de verificação. Mesmo teto de cadastro (5/min por IP, os dois pares
+   * origem↔caixa). Resposta SEMPRE igual — não revela se o e-mail existe nem está confirmado.
+   */
+  @PostMapping("/reenviar-verificacao")
+  public AuthDtos.MensagemResponse reenviarVerificacao(
+      @Valid @RequestBody AuthDtos.ReenvioRequest req, HttpServletRequest http) {
+    registerLimiter.check(http.getRemoteAddr());
+    verificacao.reenviar(req.email());
+    return new AuthDtos.MensagemResponse(
+        "Se este e-mail existir e estiver pendente, um novo link foi enviado.");
   }
 
   @PostMapping("/login")

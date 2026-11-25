@@ -160,6 +160,12 @@ sudo systemctl restart campeao-favorito
   ouro absoluto só olhando a conta com a tag certa (`Hide on bush#KR1`).
 - Restart da VM derruba a sessão SSH — reabrir terminal.
 - CRLF local no frontend quebra o `prettier --check`; a CI é a verdade.
+- **A Security List da OCI é compartilhada entre as DUAS VMs** (2026-11-25: uma regra de
+  ingress da 443 foi removida como "porta aberta sem uso" de outro projeto e o backend desta
+  API ficou inalcançável por ~10h — o `monitor.yml` pegou). Antes de mexer em regra de
+  ingress/security list, procurar as outras máquinas que compartilham a mesma lista; depois da
+  mudança, validar com `curl` externo e conferir o `monitor.yml` (`workflow_dispatch` para
+  testar na hora).
 
 ## Histórico de correções (PRs 52–70, 2026-11-24)
 

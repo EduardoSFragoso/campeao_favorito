@@ -78,9 +78,9 @@ class RiotServiceTest {
     stubMasteries();
     when(client.getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-id")))
+            eq("puuid-1")))
         .thenReturn(
             new RiotDtos.LeagueEntry[] {
               new RiotDtos.LeagueEntry(
@@ -105,9 +105,9 @@ class RiotServiceTest {
     stubMasteries();
     when(client.getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-403")))
+            eq("puuid-1")))
         .thenThrow(new RiotApiException(403, "chave inválida"));
 
     RiotDtos.SummonerProfile profile = service.summonerProfile("hideonbush", "KR", "br1");
@@ -123,9 +123,9 @@ class RiotServiceTest {
     stubMasteries();
     when(client.getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-404")))
+            eq("puuid-1")))
         .thenThrow(new RiotApiException(404, "sem entradas"));
 
     RiotDtos.SummonerProfile profile = service.summonerProfile("hideonbush", "KR", "br1");
@@ -140,9 +140,9 @@ class RiotServiceTest {
     stubMasteries();
     when(client.getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-429")))
+            eq("puuid-1")))
         .thenThrow(new RiotApiException(429, "rate limit"));
 
     RiotApiException ex =
@@ -245,9 +245,9 @@ class RiotServiceTest {
     stubMasteries();
     when(client.getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            eq("sum-cache")))
+            eq("puuid-1")))
         .thenReturn(new RiotDtos.LeagueEntry[0]);
 
     service.summonerProfile("hideonbush", "KR", "br1");
@@ -263,9 +263,9 @@ class RiotServiceTest {
     verify(client, times(1))
         .getServer(
             eq("br1"),
-            contains("/lol/league/v4/entries/by-summoner"),
+            contains("/lol/league/v4/entries/by-puuid"),
             eq(RiotDtos.LeagueEntry[].class),
-            any()); // ranked é cacheado por summoner id — a 2ª busca vem do cache
+            any()); // ranked é cacheado por PUUID — a 2ª busca vem do cache
   }
 
   // ---------- masteries (lista completa por conta, sem /top) ----------

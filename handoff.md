@@ -198,38 +198,39 @@ Priorizadas — da mais urgente para a menos:
    `X-Forwarded-For`/`Forwarded` do vhost e a strategy `framework` (os rate limits por IP —
    login e register — dependem disso). Nota "quando revisar" no
    [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 3.
-3. **Suíte de banco real no dev local** — os testes de `CorridaBancoRealTest` ficam skipped sem
-   `DB_URL`; subir um Postgres descartável local (container) facilitaria a rede de segurança
-   fora da CI.
-4. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; nota
+3. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; nota
    "quando revisar" no [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 3.
-5. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
+4. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-6. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — verificar na
+5. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — verificar na
    documentação atual da Riot se `league/v4/entries/by-summoner` está depreciada em favor de
    `by-puuid`; migrar se estiver. Verificar também o tratamento de `summoner.id` nulo e a
    chave de cache do ranking, que hoje depende do summonerId.
-7. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
+6. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — o risco de
    enumeração existe e está mitigado pelo rate limit de 5/min por IP no `/register`.
-8. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
+7. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
    leitura com o mapper padrão; falta um teste que passe pela resposta HTTP real do `RestClient`
    (servidor de stub) com `null` nos numéricos, garantindo que os conversores usados em runtime
    têm a mesma tolerância.
-9. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
+8. **JWT de 7 dias no `localStorage`, sem revogação** — o risco existe: expirar token/logout
    é decisão só do frontend; não há revogação server-side durante os 7 dias de validade.
-10. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
+9. **CSP via `<meta>` no `index.html`** — cabeçalho restritivo de conteúdo; testar com Data
     Dragon e Community Dragon (CDNs externas do frontend) antes de apertar.
-11. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
+10. **Verificação de e-mail no cadastro** — hoje o register aceita qualquer e-mail e o 409
     revela existência (mitigado por 5/min por IP); verificação por código/e-mail fecharia.
-12. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
+11. **Refatoração do `RiotService`** (350 linhas, com resolução de conta duplicada) — só com
     testes de caracterização ANTES (regra do AGENTS.md): a suite atual mocka o cliente inteiro.
-13. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
+12. **`PermitRootLogin` no sshd** (ex.: `prohibit-password`) — endurecimento opcional; estado
     atual, trade-offs e passos de validação/rollback no
     [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 4 (aplicação é decisão do dono,
     fora do repositório).
 
 ## Pendências resolvidas (arquivo)
+
+- Postgres descartável local para a suíte de banco real documentado
+  ([docs/banco-real-local.md](docs/banco-real-local.md)): container `postgres:17` com a
+  mesma configuração da CI, acessado por `DB_URL` nas variáveis de ambiente.
 
 - Runbook de rotação de chaves criado (`docs/rotacao-chaves.md`): passos/rollback da chave da
   Riot e do `JWT_SECRET`, com janelas sugeridas (era a pendência 4; hoje a rotação é manual do

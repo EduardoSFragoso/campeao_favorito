@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.favorito.api.auth.JwtAuthFilter;
+import br.com.favorito.api.common.EntradaInvalidaException;
 import br.com.favorito.api.config.SecurityConfig;
 import br.com.favorito.api.config.TestPropertiesConfig;
 import br.com.favorito.api.riot.RiotDtos.ChampionRotation;
@@ -104,6 +105,28 @@ class RiotControllerTest {
                 .param("tagLine", "K"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error").exists());
+  }
+
+  /**
+   * Entrada que NÓS validamos (platform fora da whitelist) tem de devolver 400 com a mensagem
+   * ESPECÍFICA — "Requisição inválida." genérico deixa o usuário às cegas sobre o que corrigir
+   * (regressão de mensagens do PR 73 corrigida por EntradaInvalidaException). O service real lança
+   * a exceção com essa mensagem; aqui o stub reprodiz o lançamento para isolar o comportamento do
+   * handler sobre essa exceção.
+   */
+  @Test
+  void platformForaDaWhitelist400ComMensagemEspecifica() throws Exception {
+    when(riotService.summonerProfile("Galuverior", "BR1", "xx1"))
+        .thenThrow(new EntradaInvalidaException("Plataforma inválida: xx1"));
+
+    mvc.perform(
+            get("/api/riot/summoner")
+                .with(user("7"))
+                .param("gameName", "Galuverior")
+                .param("tagLine", "BR1")
+                .param("platform", "xx1"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Plataforma inválida: xx1"));
   }
 
   @Test

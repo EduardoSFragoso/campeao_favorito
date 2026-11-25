@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Contrato de mensagens de erro nas bordas onde a exceção pode carregar detalhe: 400 de
- * IllegalArgumentException e 404 de rota inexistente NÃO ecoam a mensagem/caminho original para o
- * client — vão para o log, a resposta é genérica (mesmo padrão do catch-all "Erro interno.").
- * Montagem de segurança igual ao FavoriteControllerTest (cadeia real, JwtService mockado).
+ * Contrato de mensagens de erro: validação NOSSA (EntradaInvalidaException) responde 400 com a
+ * mensagem acionável; IllegalArgumentException solta e 404 de rota inexistente NÃO ecoam detalhe
+ * para o client — vão para o log, a resposta é genérica (mesmo padrão do "Erro interno."). Montagem
+ * de segurança igual ao FavoriteControllerTest (cadeia real, JwtService mockado).
  */
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.ProvoController.class)
 @Import({
@@ -48,6 +48,11 @@ class GlobalExceptionHandlerTest {
     public String argumento() {
       throw new IllegalArgumentException("Plataforma inválida: detalhe interno #42");
     }
+
+    @GetMapping("/teste/entrada-invalida")
+    public String entradaInvalida() {
+      throw new EntradaInvalidaException("Plataforma inválida: xx1");
+    }
   }
 
   @Test
@@ -55,6 +60,14 @@ class GlobalExceptionHandlerTest {
     mvc.perform(get("/teste/argumento").with(user("7")))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error").value("Requisição inválida."));
+  }
+
+  /** Validação NOSSA (EntradaInvalidaException): 400 com a mensagem acionável inteira. */
+  @Test
+  void entradaInvalida400ComMensagemEspecifica() throws Exception {
+    mvc.perform(get("/teste/entrada-invalida").with(user("7")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Plataforma inválida: xx1"));
   }
 
   /** 404 real: rota sem controller e sem recurso estático → NoResourceFoundException. */

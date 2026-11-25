@@ -13,6 +13,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.favorito.api.common.EntradaInvalidaException;
 import br.com.favorito.api.common.RiotApiException;
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -104,7 +105,7 @@ class RiotServiceGuardasTest {
         assertThrows(
             Exception.class,
             () -> service.summonerProfile("Hideonbush", "KR", "plataforma-fantasma"));
-    assertInstanceOf(IllegalArgumentException.class, e);
+    assertInstanceOf(EntradaInvalidaException.class, e);
 
     // nenhum traço nos maps: a guarda roda antes de qualquer uso deles
     assertEquals(0, mapaInterno("locks").size());
@@ -115,7 +116,7 @@ class RiotServiceGuardasTest {
   @DisplayName("gameName com caractere proibido: 400 antes de tocar em cache/locks")
   void gameNameInvalidoNaoTocaNosMaps() throws Exception {
     assertThrows(
-        IllegalArgumentException.class, () -> service.summonerProfile("na(me)rua", "KR", "br1"));
+        EntradaInvalidaException.class, () -> service.summonerProfile("na(me)rua", "KR", "br1"));
     assertEquals(0, mapaInterno("locks").size());
     assertEquals(0, mapaInterno("cache").size());
   }
@@ -124,7 +125,7 @@ class RiotServiceGuardasTest {
   @DisplayName("tagLine com formato inválido: 400 antes de tocar em cache/locks")
   void tagLineInvalidaNaoTocaNosMaps() throws Exception {
     assertThrows(
-        IllegalArgumentException.class, () -> service.masteries("Hideonbush", "TOO-LONG", "br1"));
+        EntradaInvalidaException.class, () -> service.masteries("Hideonbush", "TOO-LONG", "br1"));
     assertEquals(0, mapaInterno("locks").size());
     assertEquals(0, mapaInterno("cache").size());
   }
@@ -133,7 +134,7 @@ class RiotServiceGuardasTest {
   @DisplayName("gameName sem nenhum alfanumérico ('..') é rejeitado antes de tocar em cache/locks")
   void gameNameSemAlfanumericoRejeitado() throws Exception {
     // '..' passa na regex antiga (só proíbe caracteres estranhos) — a guarda é nova
-    assertThrows(IllegalArgumentException.class, () -> service.summonerProfile("..", "KR", "br1"));
+    assertThrows(EntradaInvalidaException.class, () -> service.summonerProfile("..", "KR", "br1"));
     assertEquals(0, mapaInterno("locks").size());
     assertEquals(0, mapaInterno("cache").size());
   }

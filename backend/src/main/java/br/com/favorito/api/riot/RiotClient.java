@@ -1,5 +1,6 @@
 package br.com.favorito.api.riot;
 
+import br.com.favorito.api.common.EntradaInvalidaException;
 import br.com.favorito.api.common.RiotApiException;
 import br.com.favorito.api.config.RiotProperties;
 import java.util.Map;
@@ -72,7 +73,7 @@ public class RiotClient {
     // white-list obrigatória: a platform é colada dentro da URL do host abaixo — aceitar string
     // arbitrária permitiria direcionar a Riot key para um host externo (SSRF)
     if (!PLATFORM_TO_REGIONAL.containsKey(plat)) {
-      throw new IllegalArgumentException("Plataforma inválida: " + plat);
+      throw new EntradaInvalidaException("Plataforma inválida: " + plat);
     }
     return new Routing(
         plat,

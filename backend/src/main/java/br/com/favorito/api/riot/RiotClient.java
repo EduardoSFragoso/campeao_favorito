@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 /**
@@ -92,7 +93,7 @@ public class RiotClient {
     return get(routing(platform).regionalHost(), path, null, type, uriVars);
   }
 
-  private <T> T get(
+  <T> T get(
       String baseUrl, String path, Map<String, Object> query, Class<T> type, Object... uriVars) {
     RestClient client =
         clients.computeIfAbsent(
@@ -114,6 +115,16 @@ public class RiotClient {
     } catch (RestClientResponseException e) {
       log.warn("Riot API {} {} -> HTTP {}", baseUrl, path, e.getStatusCode().value());
       throw new RiotApiException(e.getStatusCode().value(), describe(e.getStatusCode().value()));
+    } catch (RestClientException e) {
+      // Erro de rede/leitura (conexão cortada, corpo ilegível): 502 com mensagem genérica — o
+      // corpo da resposta upstream não vai nem pro log, nem pro payload (pode conter qualquer
+      // coisa).
+      log.warn(
+          "Riot API {} {} -> erro de rede/leitura: {}",
+          baseUrl,
+          path,
+          e.getClass().getSimpleName());
+      throw new RiotApiException(502, "Riot API indisponível ou resposta ilegível.");
     }
   }
 

@@ -194,8 +194,8 @@ Priorizadas — da mais urgente para a menos:
 1. **Chave de produção pessoal da Riot** — com ela o elo ranqueado volta a ser exibido (o
    degrade já está pronto). Rascunho em `docs/riot-personal-key-application.md`.
 2. **Qualquer CDN/proxy novo na frente da API** — reavaliar a sobrescrita de
-   `X-Forwarded-For`/`Forwarded` do vhost e a strategy `framework` (os três rate limits por IP
-   dependem disso; hoje é seguro só enquanto o nginx for o único proxy).
+   `X-Forwarded-For`/`Forwarded` do vhost e a strategy `framework` (os rate limits por IP —
+   login e register — dependem disso; hoje é seguro só enquanto o nginx for o único proxy).
 3. **Suíte de banco real no dev local** — os testes de `CorridaBancoRealTest` ficam skipped sem
    `DB_URL`; subir um Postgres descartável local (container) facilitaria a rede de segurança
    fora da CI.
@@ -203,6 +203,26 @@ Priorizadas — da mais urgente para a menos:
    janela e passos no runbook quando virar operação de fato.
 5. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; se um
    dia o `Require code scanning results` entrar no ruleset, revisar tempos de análise.
+6. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
+   E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
+   branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
+7. **Migração de `entries/by-summoner` para `entries/by-puuid`** (League-V4) — a Riot depreca
+   rotas por summonerId; verificar o tratamento de `summoner.id` nulo (League para MMR-only não
+   cria summoner) e revisar a chave de cache do ranking, que hoje depende do summonerId.
+8. **`/api/auth/register` revela e-mail existente** (409 "E-mail já cadastrado") — enumeração
+   de e-mails mitigada apenas pelo rate limit de 5/min por IP; resposta genérica tiraria a
+   mensagem acionável de quem de fato já tem conta. Risco aceito pelo dono na configuração
+   atual.
+9. **Teste de ponta a ponta do `RiotClient` com JSON nulo** — `RiotDtosNulosTest` cobre a
+   leitura com o mapper padrão; falta um teste que passe pela resposta HTTP real do `RestClient`
+   (servidor de stub) com `null` nos numéricos, garantindo que os conversores usados em runtime
+   têm a mesma tolerância.
+10. **JWT de 7 dias no `localStorage`, sem revogação** — risco aceito: expirar token/logout só
+    pelo frontend não derruba o token server-side. Mudança de opinião seria reduzir a validade
+    + refresh token guardado de outra forma.
+11. **Redirecionar o visitante para `/login` ao buscar invocador** — pendência decidida pelo
+    dono: a busca de invocador exige login e o visitante deve ser levado para `/login`
+    (UX; correr depois da decisão de onde aterrissar de volta com o sistema).
 
 ## Pendências resolvidas (arquivo)
 

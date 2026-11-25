@@ -99,7 +99,7 @@ CORS já liberado para `http://localhost:4200` (variável `CORS_ALLOWED_ORIGINS`
 ## Testes
 
 ```bash
-cd backend && ./mvnw -B spotless:apply && ./mvnw -B verify   # 109 testes; os de banco real exigem DB_URL (rodam na CI)
+cd backend && ./mvnw -B spotless:apply && ./mvnw -B verify   # os testes de banco real exigem DB_URL (rodam na CI)
 cd frontend && npm run format:check && npm run lint && npx ng test --watch=false && npx ng build
 ```
 

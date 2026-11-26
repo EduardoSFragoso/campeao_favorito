@@ -49,9 +49,12 @@ app:
       "mail.smtp.timeout": 10000
       "mail.smtp.writetimeout": 10000
   smtp:
-    # espelho de spring.mail.host + remetente para o MailConfig escolher o transporte
+    # espelho completo de spring.mail.* (host/from/user/password) para o MailConfig decidir
+    # o transporte: incompleto é transporte de log em dev/test e RECUSA do boot em prod
     host: ${SMTP_HOST:}
     from: ${SMTP_FROM:}
+    user: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
 
 riot:
   api:

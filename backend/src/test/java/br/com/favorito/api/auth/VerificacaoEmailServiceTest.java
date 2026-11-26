@@ -58,7 +58,9 @@ class VerificacaoEmailServiceTest {
     tokens = mock(VerificacaoEmailRepository.class);
     users = mock(UserRepository.class);
     email = mock(EmailEnviador.class);
-    service = new VerificacaoEmailService(tokens, users, email);
+    // executor DIRETO: dispara o envio na hora (determinístico); a prova de post-commit usa
+    // sincronização de transação, não threads
+    service = new VerificacaoEmailService(tokens, users, email, Runnable::run);
   }
 
   private String tokenSalvoExtraidoDoLink() {
@@ -195,5 +197,32 @@ class VerificacaoEmailServiceTest {
     service.reenviar("ana@exemplo.dev");
 
     verify(email).enviar(any(), any(), any());
+  }
+
+  /**
+   * O SMTP fica FORA da transação: o token é gravado no commit, e o e-mail só vai DEPOIS dele — uma
+   * lentidão/queda de SMTP não derruba nem segura a resposta do cadastro. Falha no código antigo,
+   * que chamava o envio dentro de criar() (antes do commit).
+   */
+  @Test
+  @DisplayName("envio do e-mail acontece SÓ APÓS o commit da transação (não durante)")
+  void envioSoDepoisDoCommit() {
+    User ana = user(1L, "ana@exemplo.dev", false);
+
+    // simula uma transação ativa SEM Spring: criar() registra, mas NÃO envia
+    org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+    try {
+      service.criar(ana);
+
+      verify(email, never()).enviar(any(), any(), any());
+      verify(tokens).save(any()); // o pedido/token JÁ foi gravado dentro da transação
+
+      // o commit acontece: os afterCommit disparam — agora sim o e-mail sai
+      org.springframework.transaction.support.TransactionSynchronizationUtils.triggerAfterCommit();
+      verify(email).enviar(any(), any(), any());
+    } finally {
+      org.springframework.transaction.support.TransactionSynchronizationManager
+          .clearSynchronization();
+    }
   }
 }

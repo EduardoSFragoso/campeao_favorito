@@ -227,10 +227,11 @@ Priorizadas — da mais urgente para a menos:
       verificação → login → logout (logout revoga; novo login precisa funcionar).
    e. **AVISOS**: todas as sessões ativas CAEM no primeiro boot pós-PR 87 (tokens antigos não
       têm o claim `ver` — todo mundo loga de novo). O **rollback do jar NÃO é só** restaurar o
-      `app.jar.bak`: o Flyway, por padrão, não sobe com migrações aplicadas (V2, V3) que o jar
-      antigo não conhece. Plano real de rollback: **restaurar o banco para um ponto anterior
-      (backup do item a) ou corrigir adiante com um jar novo** — confirmar o comportamento no
-      ensaio da branch do Neon (item b) e registrar o que foi observado.
+      `app.jar.bak`: com migrações aplicadas (V2, V3) que o jar antigo não conhece, o Flyway
+      **pode não subir ou subir com aviso — o ensaio na branch do Neon decide** (rodar o jar
+      antigo contra a branch que já tem V2/V3 e observar o comportamento). Plano real de
+      rollback: **restaurar o banco para um ponto anterior (backup do item a) ou corrigir
+      adiante com um jar novo**.
 2. **Chave de produção pessoal da Riot** — com ela o elo ranqueado volta a ser exibido (o
    degrade já está pronto). Rascunho em `docs/riot-personal-key-application.md`; passos do
    pedido no [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 5 (ação do dono no portal).

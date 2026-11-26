@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Ciclo do token de verificação de e-mail. Token cru (32 bytes, base64url) só existe no e-mail/URL;
@@ -38,16 +40,24 @@ public class VerificacaoEmailService {
   private final VerificacaoEmailRepository tokens;
   private final UserRepository users;
   private final EmailEnviador email;
+
+  /** Onde o envio desacoplado roda (produção: fila curta com rejeição silenciosa e logada). */
+  private final java.util.concurrent.Executor emailExecutor;
+
   private final SecureRandom aleatorio = new SecureRandom();
 
   public VerificacaoEmailService(
-      VerificacaoEmailRepository tokens, UserRepository users, EmailEnviador email) {
+      VerificacaoEmailRepository tokens,
+      UserRepository users,
+      EmailEnviador email,
+      java.util.concurrent.Executor emailExecutor) {
     this.tokens = tokens;
     this.users = users;
     this.email = email;
+    this.emailExecutor = emailExecutor;
   }
 
-  /** Cria pedido e envia, respeitando a janela de 5 min entre emissões para a conta. */
+  /** Grava o token (transacional) e agenda o envio para DEPOIS do commit, em thread própria. */
   @Transactional
   public void criar(User user) {
     if (janelaEmVigor(user.getId())) {
@@ -60,19 +70,37 @@ public class VerificacaoEmailService {
     }
     String cru = tokenCru();
     salvarToken(user.getId(), cru);
-    try {
-      email.enviar(
-          user.getEmail(),
-          "Campeões Favoritos — confirme seu e-mail",
-          "Olá,\n\nConfirme seu cadastro no link abaixo (válido por 24 horas):\n\n"
-              + ORIGEM_FRONTEND
-              + "/campeao_favorito/verificar?token="
-              + cru
-              + "\n\nSe você não criou esta conta, ignore este e-mail.\n");
-    } catch (RuntimeException e) {
-      // sem detalhes do corpo da falha no log do client — o cadastro segue válido
-      log.error("Falha ao enviar e-mail de verificação para o usuário {}", user.getId(), e);
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              dispararEnvio(user.getEmail(), cru);
+            }
+          });
+    } else {
+      // fora de transação (não há commit a esperar): manda já, ainda assim assíncrono
+      dispararEnvio(user.getEmail(), cru);
     }
+  }
+
+  /** Envia em thread própria; SMTP lento/caído NUNCA segura nem derruba a resposta HTTP. */
+  private void dispararEnvio(String destino, String cru) {
+    emailExecutor.execute(() -> {
+      try {
+        email.enviar(
+            destino,
+            "Campeões Favoritos — confirme seu e-mail",
+            "Olá,\n\nConfirme seu cadastro no link abaixo (válido por 24 horas):\n\n"
+                + ORIGEM_FRONTEND
+                + "/campeao_favorito/verificar?token="
+                + cru
+                + "\n\nSe você não criou esta conta, ignore este e-mail.\n");
+      } catch (RuntimeException e) {
+        // sem detalhes do corpo da falha no log do client — o token gravado segue válido por 24h
+        log.error("Falha ao enviar e-mail de verificação para {}", destino, e);
+      }
+    });
   }
 
   /** Confirma o token e marca o usuário verificado. Token de outro uso/expirado é 400. */

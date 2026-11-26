@@ -160,6 +160,15 @@ sudo systemctl restart campeao-favorito
   ouro absoluto só olhando a conta com a tag certa (`Hide on bush#KR1`).
 - Restart da VM derruba a sessão SSH — reabrir terminal.
 - CRLF local no frontend quebra o `prettier --check`; a CI é a verdade.
+- **CSP `<meta>` em página estática**: sem headers no Pages, não há nonce/hash — QUALQUER
+  origem https nova usada por `HttpClient`/`fetch` em `src/app` precisa entrar no
+  `connect-src` do `index.html` (a varredura do `csp.spec.ts` pega esquecimento; o
+  `csp-dist.spec.ts` confere o HTML do build contra o `config.json` publicado). Origin da
+  API no HTML é placeholder; o deploy (`deploy-gh-pages.yml`) substitui pela origem de
+  `vars.API_URL` antes do build — se um HTML publicado ainda tiver placeholder, o teste de
+  dist falha. `optimization.styles.inlineCritical: false` em `angular.json` é OBRIGATÓRIO:
+  o CSS crítico injeta um `<script>` inline que `script-src 'self'` mata (produção quebrou
+  assim em 2026-11-25).
 - **A Security List da OCI é compartilhada entre as DUAS VMs** (2026-11-25: uma regra de
   ingress da 443 foi removida como "porta aberta sem uso" de outro projeto e o backend desta
   API ficou inalcançável por ~10h — o `monitor.yml` pegou). Antes de mexer em regra de

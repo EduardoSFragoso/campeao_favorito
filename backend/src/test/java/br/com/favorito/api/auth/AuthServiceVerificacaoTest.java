@@ -72,6 +72,24 @@ class AuthServiceVerificacaoTest {
     assertEquals(AuthService.MENSAGEM_REGISTER, res.message());
   }
 
+  /**
+   * Anti-cronometragem (timing): o caminho de e-mail existente também precisa gastar o trabalho do
+   * bcrypt — se só o caminho novo codifica, o tempo de resposta revela que a conta existe. Falha no
+   * código antigo, que codificava apenas a senha do cadastro novo.
+   */
+  @Test
+  @DisplayName(
+      "register de e-mail EXISTENTE também roda o bcrypt (tempo equivalente nos 2 caminhos)")
+  void registerContaExistenteTambemCodifica() {
+    when(users.findByEmailIgnoreCase(any()))
+        .thenReturn(java.util.Optional.of(user("ana@exemplo.dev", false)));
+
+    var res = service.register(new AuthDtos.RegisterRequest("ana@exemplo.dev", "12345678", "Ana"));
+
+    assertEquals(AuthService.MENSAGEM_REGISTER, res.message());
+    org.mockito.Mockito.verify(encoder).encode("12345678");
+  }
+
   @Test
   @DisplayName("login sem e-mail verificado → bloqueio com mensagem acionável")
   void loginSemVerificacaoEBloqueado() {

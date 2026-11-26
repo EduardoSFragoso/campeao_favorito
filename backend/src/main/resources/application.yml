@@ -41,6 +41,10 @@ app:
     properties:
       "mail.smtp.auth": ${SMTP_AUTH:true}
       "mail.smtp.starttls.enable": true
+      # STARTTLS obrigatório: sem isso a sessão degrada para texto puro se o servidor permitir
+      "mail.smtp.starttls.required": true
+      # valida o certificado do servidor contra o hostname (anti MITM)
+      "mail.smtp.ssl.checkserveridentity": true
       "mail.smtp.connectiontimeout": 5000
       "mail.smtp.timeout": 10000
       "mail.smtp.writetimeout": 10000

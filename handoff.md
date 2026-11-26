@@ -212,19 +212,38 @@ Cada linha em uma frase; branch/main sempre pelo fluxo PR → Rebase and merge.
 
 Priorizadas — da mais urgente para a menos:
 
-1. **Chave de produção pessoal da Riot** — com ela o elo ranqueado volta a ser exibido (o
+1. **Deploy do backend na VM (PR 89)** — na VM ainda corre um jar anterior aos PRs 71–87.
+   Checklist em ordem (aplicação é AÇÃO DO DONO; o agente só sugere comandos de leitura):
+   a. **Backup**: rodar o workflow de backup MANUALMENTE e confirmar verde antes de tocar em
+      qualquer coisa.
+   b. **Ensaio das migrações V2 (`verificacao_email`) e V3 (`users.token_ver`) numa BRANCH do
+      Neon** criada a partir da produção — nunca direto na produção. Rodar `./mvnw -B verify`
+      (ou subir o jar novo) apontando `DB_URL` para a branch, registrar resultado; testar
+      explicitamente o cenário de rollback abaixo.
+   c. **Env da VM** (`/etc/campeao-favorito.env`, só os NOMES aqui — valores quem cria o dono):
+      `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`. Sem eles o perfil
+      `prod` agora RECUSA o boot — intencional (`MailConfig`).
+   d. **Trocar o jar e reiniciar** e validar em ordem: cadastro → e-mail recebido → link de
+      verificação → login → logout (logout revoga; novo login precisa funcionar).
+   e. **AVISOS**: todas as sessões ativas CAEM no primeiro boot pós-PR 87 (tokens antigos não
+      têm o claim `ver` — todo mundo loga de novo). O **rollback do jar NÃO é só** restaurar o
+      `app.jar.bak`: o Flyway, por padrão, não sobe com migrações aplicadas (V2, V3) que o jar
+      antigo não conhece. Plano real de rollback: **restaurar o banco para um ponto anterior
+      (backup do item a) ou corrigir adiante com um jar novo** — confirmar o comportamento no
+      ensaio da branch do Neon (item b) e registrar o que foi observado.
+2. **Chave de produção pessoal da Riot** — com ela o elo ranqueado volta a ser exibido (o
    degrade já está pronto). Rascunho em `docs/riot-personal-key-application.md`; passos do
    pedido no [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 5 (ação do dono no portal).
-2. **Qualquer CDN/proxy novo na frente da API** — reavaliar a sobrescrita de
+3. **Qualquer CDN/proxy novo na frente da API** — reavaliar a sobrescrita de
    `X-Forwarded-For`/`Forwarded` do vhost e a strategy `framework` (os rate limits por IP —
    login e register — dependem disso). Nota "quando revisar" no
    [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 3.
-3. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; nota
+4. **CodeQL/setup explícito de code scanning** — o default setup cobre Java+TS há muito; nota
    "quando revisar" no [docs/rotacao-chaves.md](docs/rotacao-chaves.md), seção 3.
-4. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
+5. **Separar roles de migração e de runtime no Neon** — hoje a `campeao_app` é dona das tabelas
    E roda o Flyway; separar role de migração (DDL) de role de runtime (só DML) exige ensaio em
    branch do Neon e confirmação do dono antes de qualquer troca no env da VM.
-5. **JWT: sem refresh token (opção B)** — restante da mitigação do antigo "7 dias sem
+6. **JWT: sem refresh token (opção B)** — restante da mitigação do antigo "7 dias sem
    revogação". Alívio já na main (PR 87): expiração de 24h (override `JWT_EXPIRATION_MS`) e
    revogação server-side por `token_ver` (logout real em `POST /api/auth/logout`). O
    contratado pelo dono é implementar **B** numa branch `alt-main` (branchar da main DEPOIS

@@ -27,6 +27,14 @@ public class VerificacaoEmailService {
   static final Duration TTL = Duration.ofHours(24);
   static final String ORIGEM_FRONTEND = "https://eduardosfragoso.github.io";
 
+  /**
+   * Janela mínima entre dois pedidos de e-mail para a MESMA conta — register (conta pendente) e
+   * reenvio podem ser chamados em rajada; sem isso, alguém enche a caixa de entrada de terceiros de
+   * links (o gasto SMTP é por conta dele). Resposta HTTP dos endpoints NÃO muda: continua a
+   * genérica de sempre.
+   */
+  static final Duration JANELA_REENVIO = Duration.ofMinutes(5);
+
   private final VerificacaoEmailRepository tokens;
   private final UserRepository users;
   private final EmailEnviador email;
@@ -39,9 +47,17 @@ public class VerificacaoEmailService {
     this.email = email;
   }
 
-  /** Cria pedido e envia; falha de envio nunca derruba o cadastro (fica no log). */
+  /** Cria pedido e envia, respeitando a janela de 5 min entre emissões para a conta. */
   @Transactional
   public void criar(User user) {
+    if (janelaEmVigor(user.getId())) {
+      // silencioso e sem erro: o HTTP continua a mesma resposta genérica (não revela nada)
+      log.info(
+          "Reenvio para a conta {} dentro da janela de {} min — e-mail novo NÃO emitido.",
+          user.getId(),
+          JANELA_REENVIO.toMinutes());
+      return;
+    }
     String cru = tokenCru();
     salvarToken(user.getId(), cru);
     try {
@@ -93,6 +109,15 @@ public class VerificacaoEmailService {
       return;
     }
     criar(conta.get());
+  }
+
+  /** True quando já houve um pedido para a conta dentro da janela de 5 min. */
+  private boolean janelaEmVigor(Long userId) {
+    return tokens
+        .findTopByUserIdOrderByCriadoEmDesc(userId)
+        .map(VerificacaoEmail::getCriadoEm)
+        .map(criadoEm -> criadoEm.isAfter(Instant.now().minus(JANELA_REENVIO)))
+        .orElse(false);
   }
 
   private void salvarToken(Long userId, String cru) {

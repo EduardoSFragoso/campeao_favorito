@@ -153,4 +153,47 @@ class VerificacaoEmailServiceTest {
 
     verify(email, never()).enviar(any(), any(), any());
   }
+
+  /**
+   * Janela mínima de 5 minutos de reenvio por CONTA: chamadas em rajada não enchem a caixa de
+   * terceiros com links novos. Falha no código antigo, que emitia um token a cada chamada.
+   */
+  @Test
+  @DisplayName("reenvio em rajada (2 chamadas seguidas < 5 min) emite UM só e-mail")
+  void rajadaDeRenviosEmiteUmSoEmail() {
+    var ana = user(1L, "ana@exemplo.dev", false);
+    when(users.findByEmailIgnoreCase("ana@exemplo.dev")).thenReturn(Optional.of(ana));
+
+    // mini-persistência: o último pedido da conta é o último salvo
+    java.util.List<VerificacaoEmail> pedidos = new java.util.ArrayList<>();
+    when(tokens.save(any()))
+        .thenAnswer(inv -> {
+          pedidos.add(inv.getArgument(0));
+          return inv.getArgument(0);
+        });
+    when(tokens.findTopByUserIdOrderByCriadoEmDesc(1L))
+        .thenAnswer(inv -> pedidos.isEmpty() ? Optional.empty() : Optional.of(pedidos.getLast()));
+
+    service.reenviar("ana@exemplo.dev"); // 1ª chamada: e-mail sai
+    service.reenviar("ana@exemplo.dev"); // 2ª chamada 3s depois: rejeitada, resposta idêntica
+
+    verify(email, org.mockito.Mockito.times(1)).enviar(any(), any(), any());
+    verify(users, org.mockito.Mockito.times(2)).findByEmailIgnoreCase("ana@exemplo.dev");
+  }
+
+  @Test
+  @DisplayName("após a janela (pedido anterior com > 5 min), o reenvio EMITE link novo")
+  void reenvioForaDaJanelaEmiteNovo() {
+    var ana = user(1L, "ana@exemplo.dev", false);
+    when(users.findByEmailIgnoreCase("ana@exemplo.dev")).thenReturn(Optional.of(ana));
+
+    VerificacaoEmail antigo = new VerificacaoEmail();
+    antigo.setUserId(1L);
+    antigo.setCriadoEm(Instant.now().minus(java.time.Duration.ofSeconds(5 * 60 + 1)));
+    when(tokens.findTopByUserIdOrderByCriadoEmDesc(1L)).thenReturn(Optional.of(antigo));
+
+    service.reenviar("ana@exemplo.dev");
+
+    verify(email).enviar(any(), any(), any());
+  }
 }

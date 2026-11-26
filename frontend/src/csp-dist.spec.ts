@@ -52,7 +52,7 @@ describe.skipIf(!existsSync(join(DIST, 'index.html')))('CSP do HTML gerado (dist
   });
 
   it('nenhum <script> inline (sem src) e nenhum atributo on*= no HTML final', () => {
-    const scriptsInline = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)]
+    const scriptsInline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script[^>]*>/gi)]
       .map((m) => ({ attrs: m[1] ?? '', corpo: (m[2] ?? '').trim() }))
       .filter((s) => !/\bsrc\s*=/.test(s.attrs) && s.corpo !== '');
     expect(

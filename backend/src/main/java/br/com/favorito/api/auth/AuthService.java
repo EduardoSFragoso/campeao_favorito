@@ -36,6 +36,10 @@ public class AuthService {
    */
   public AuthDtos.MensagemResponse register(AuthDtos.RegisterRequest req) {
     String email = req.email().trim().toLowerCase();
+    // bcrypt ANTES do branching de existência: os dois caminhos (conta nova e existente) gastam o
+    // MESMO trabalho — se só o caminho novo codificasse, o tempo de resposta revelaria existência
+    // de conta. No caminho de e-mail existente a codificação é descartável (nada é salvo).
+    String hashDaSenha = passwordEncoder.encode(req.password());
 
     // e-mail existente: MESMA resposta de sempre (nada revelado). Conta pendente aproveita
     // para receber um link novo; conta confirmada não recebe nada — o e-mail decidirá.
@@ -50,7 +54,7 @@ public class AuthService {
     User user = new User();
     user.setEmail(email);
     user.setDisplayName(req.displayName().trim());
-    user.setPasswordHash(passwordEncoder.encode(req.password()));
+    user.setPasswordHash(hashDaSenha);
     // saveAndFlush para a violação de unicidade estourar aqui dentro — a corrida no
     // findBy(visto antes do INSERT) é decidida pelo UNIQUE do banco. Quem perde a corrida
     // (users_email_key) recebe a MESMA mensagem genérica; outra violação (FK, CHECK, NOT NULL)

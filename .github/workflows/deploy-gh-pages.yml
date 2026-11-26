@@ -35,6 +35,15 @@ jobs:
           EOF
           cat frontend/public/config.json
 
+      # A CSP do index.html leva a origem da API na mão (meta tag); o valor commitado é o
+      # placeholder de dev (o mesmo host do config.json local). O deploy troca pela origem
+      # real — se a API mudar de endereço atualize o placeholder do index.html TAMBÉM.
+      - name: Substitui a origem da API na CSP do index.html
+        run: |
+          set -euo pipefail
+          sed -i "s|https://147-15-57-6.sslip.io|${{ vars.API_URL }}|g" frontend/src/index.html
+          grep -q "${{ vars.API_URL }}" frontend/src/index.html
+
       - name: Build (base href do subpath do gh-pages)
         working-directory: frontend
         run: |

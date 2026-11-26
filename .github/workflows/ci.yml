@@ -63,9 +63,10 @@ jobs:
       - name: ESLint
         working-directory: frontend
         run: npm run lint
-      - name: Unit tests (vitest)
-        working-directory: frontend
-        run: npx ng test --watch=false
       - name: Build
         working-directory: frontend
         run: npx ng build
+      # depois do build: a bateria do dist (csp-dist.spec) examina o HTML FINAL de produção
+      - name: Unit tests (vitest)
+        working-directory: frontend
+        run: npx ng test --watch=false

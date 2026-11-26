@@ -61,7 +61,21 @@ class MailConfigTest {
   private final ApplicationContextRunner hostSemSender =
       new ApplicationContextRunner()
           .withUserConfiguration(Config.class)
-          .withPropertyValues("app.smtp.host=smtp.exemplo.dev");
+          .withPropertyValues(
+              "app.smtp.host=smtp.exemplo.dev",
+              "app.smtp.user=app@exemplo.dev",
+              "app.smtp.password=senha-app",
+              "app.smtp.from=campeoes@exemplo.dev");
+
+  /** Prod com SMTP parcialmente configurado (falta user/senha): o boot deve falhar. */
+  private final ApplicationContextRunner prodIncompleto =
+      new ApplicationContextRunner()
+          .withUserConfiguration(Config.class)
+          .withBean(JavaMailSender.class, () -> mock(JavaMailSender.class))
+          .withPropertyValues(
+              "spring.profiles.active=prod",
+              "app.smtp.host=smtp.exemplo.dev",
+              "app.smtp.from=campeoes@exemplo.dev");
 
   @Test
   @DisplayName("host configurado sem JavaMailSender disponível: contexto falha ruidoso")
@@ -131,6 +145,28 @@ class MailConfigTest {
       org.junit.jupiter.api.Assertions.assertNull(
           ctx.getStartupFailure(), "dev sem host deve subir normalmente");
       assertInstanceOf(LogEmailEnviador.class, ctx.getBean(EmailEnviador.class));
+    });
+  }
+
+  /**
+   * SMTP parcialmente configurado em prod (aqui: falta SMTP_USER/smtp.password) é uma bomba: o
+   * JavaMailSender E existe, então o contexto antigo SUBIA e a falha só aparecia no primeiro envio.
+   * Novo contrato: o produto do guard de prod com host, user, senha e from — boot falha listando os
+   * NOMES, sem valores. Falha no código antigo (contexto subia).
+   */
+  @Test
+  @DisplayName(
+      "perfil prod sem SMTP_USER/SMTP_PASSWORD: boot FALHA listando os nomes das variáveis")
+  void prodSemCredenciaisNaoSobe() {
+    prodIncompleto.run(ctx -> {
+      Throwable falha = ctx.getStartupFailure();
+      assertInstanceOf(BeanCreationException.class, falha, "prod incompleto: não sobe");
+      String msg = falha.getMessage();
+      for (String variavel :
+          new String[] {"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"}) {
+        org.junit.jupiter.api.Assertions.assertTrue(
+            msg.contains(variavel), "mensagem de boot deve citar a variável " + variavel);
+      }
     });
   }
 }

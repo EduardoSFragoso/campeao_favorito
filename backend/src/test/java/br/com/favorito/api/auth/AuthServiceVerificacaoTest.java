@@ -90,6 +90,48 @@ class AuthServiceVerificacaoTest {
     org.mockito.Mockito.verify(encoder).encode("12345678");
   }
 
+  /**
+   * O SMTP fica FORA do caminho HTTP: com um envio que DORME, o register responde de todo jeito — o
+   * e-mail vai em thread própria. Falha no código antigo, em que o envio rodava dentro de criar()
+   * na própria thread do register.
+   */
+  @Test
+  @DisplayName("register NÃO bloqueia no SMTP lento (envio assíncrono)")
+  void registerNaoBloqueiaNoSmtpLento() {
+    long dormeMs = 2_000L;
+    VerificacaoEmailRepository tokens = mock(VerificacaoEmailRepository.class);
+    EmailEnviador lento =
+        (destino, assunto, corpo) -> {
+          try {
+            Thread.sleep(dormeMs);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        };
+    // executor em thread própria (daemon: o teste acaba antes de o sono do e-mail terminar)
+    java.util.concurrent.Executor assincrono =
+        tarefa -> {
+          Thread t = new Thread(tarefa, "email-teste-lento");
+          t.setDaemon(true);
+          t.start();
+        };
+    AuthService local =
+        new AuthService(
+            users, encoder, jwt, new VerificacaoEmailService(tokens, users, lento, assincrono));
+
+    when(users.findByEmailIgnoreCase(any())).thenReturn(java.util.Optional.empty());
+    when(users.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    long inicio = System.nanoTime();
+    var res = local.register(new AuthDtos.RegisterRequest("ana@exemplo.dev", "12345678", "Ana"));
+    long decorridoMs = (System.nanoTime() - inicio) / 1_000_000L;
+
+    assertEquals(AuthService.MENSAGEM_REGISTER, res.message());
+    org.junit.jupiter.api.Assertions.assertTrue(
+        decorridoMs < dormeMs / 2,
+        "register levou " + decorridoMs + "ms — esperou o SMTP de " + dormeMs + "ms");
+  }
+
   @Test
   @DisplayName("login sem e-mail verificado → bloqueio com mensagem acionável")
   void loginSemVerificacaoEBloqueado() {
